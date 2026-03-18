@@ -1,0 +1,25 @@
+# stocktool default configuration
+# These values are used when no CLI flags are provided.
+# Any flag passed on the command line takes precedence.
+
+defaults:
+  # Default date range preset (1m | 3m | 6m | 1y | 5y)
+  period: "1y"
+
+  # Indicators to run when --indicator is not specified.
+  # Comment out any you don't want by default.
+  indicators:
+    - bollinger
+    - rsi
+    - macd
+    - ema20
+    - ema50
+    - ema200
+    - volume
+    - atr
+    - stochastic
+    - signals
+    - support_resistance
+
+  # Directory for all output files
+  output_dir: "data"
