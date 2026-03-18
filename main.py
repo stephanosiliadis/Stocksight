@@ -199,10 +199,11 @@ def analyze(
     effective_period = period or defaults.get("period", "1y")
     start_date, end_date = _resolve_dates(start, end, effective_period)
 
-    # Fetch an extra 6-month warmup so long-period indicators (EMA200, MACD)
-    # are fully populated from start_date onwards.
+    # EMA200 needs ~200 trading days (~10 months) to fully populate.
+    # Use 12 months of warmup to guarantee all indicators are fully seeded
+    # regardless of the user's requested start date.
     warmup_start = (
-        datetime.strptime(start_date, "%Y-%m-%d") - relativedelta(months=6)
+        datetime.strptime(start_date, "%Y-%m-%d") - relativedelta(months=12)
     ).strftime("%Y-%m-%d")
 
     # ── Summary banner ────────────────────────────────────────────────────────

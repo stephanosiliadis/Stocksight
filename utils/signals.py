@@ -29,8 +29,8 @@ def detect_signals(data: pd.DataFrame, indicators: list) -> pd.DataFrame:
     # RSI signals: price crossing back into normal range from extreme
     if "rsi" in indicators and "RSI" in data.columns:
         rsi = data["RSI"]
-        rsi_buy = _safe((rsi.shift(1) < 30) & (rsi >= 30))
-        rsi_sell = _safe((rsi.shift(1) > 70) & (rsi <= 70))
+        rsi_buy = _safe(rsi.shift(1).lt(30) & rsi.ge(30))
+        rsi_sell = _safe(rsi.shift(1).gt(70) & rsi.le(70))
         signals.loc[rsi_buy, "Buy"] = data.loc[rsi_buy, "Low"] * 0.985
         signals.loc[rsi_sell, "Sell"] = data.loc[rsi_sell, "High"] * 1.015
 
@@ -42,8 +42,8 @@ def detect_signals(data: pd.DataFrame, indicators: list) -> pd.DataFrame:
     ):
         macd = data["MACD"]
         macd_sig = data["MACD_Signal"]
-        macd_buy = _safe((macd.shift(1) < macd_sig.shift(1)) & (macd >= macd_sig))
-        macd_sell = _safe((macd.shift(1) > macd_sig.shift(1)) & (macd <= macd_sig))
+        macd_buy = _safe(macd.shift(1).lt(macd_sig.shift(1)) & macd.ge(macd_sig))
+        macd_sell = _safe(macd.shift(1).gt(macd_sig.shift(1)) & macd.le(macd_sig))
         signals.loc[macd_buy & signals["Buy"].isna(), "Buy"] = (
             data.loc[macd_buy & signals["Buy"].isna(), "Low"] * 0.985
         )
@@ -57,13 +57,19 @@ def detect_signals(data: pd.DataFrame, indicators: list) -> pd.DataFrame:
     ):
         ema50 = data["EMA50"]
         ema200 = data["EMA200"]
-        # Only compute cross on rows where both EMAs have a valid value
         both_valid = ema50.notna() & ema200.notna()
+        both_valid_shifted = ema50.shift(1).notna() & ema200.shift(1).notna()
         golden = _safe(
-            both_valid & (ema50.shift(1) < ema200.shift(1)) & (ema50 >= ema200)
+            both_valid
+            & both_valid_shifted
+            & ema50.shift(1).lt(ema200.shift(1))
+            & ema50.ge(ema200)
         )
         death = _safe(
-            both_valid & (ema50.shift(1) > ema200.shift(1)) & (ema50 <= ema200)
+            both_valid
+            & both_valid_shifted
+            & ema50.shift(1).gt(ema200.shift(1))
+            & ema50.le(ema200)
         )
         signals.loc[golden & signals["Buy"].isna(), "Buy"] = (
             data.loc[golden & signals["Buy"].isna(), "Low"] * 0.985
