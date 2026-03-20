@@ -134,8 +134,8 @@ TechnicalAnalysis/
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/TechnicalAnalysis.git
-cd TechnicalAnalysis
+git clone https://github.com/your-username/Stocksight.git
+cd Stocksight
 ```
 
 **2. Create and activate a virtual environment** *(recommended)*
