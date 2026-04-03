@@ -26,11 +26,13 @@
   - [Installation](#installation)
   - [Configuration](#configuration)
   - [Usage](#usage)
+    - [Interactive Mode](#interactive-mode)
     - [Commands](#commands)
     - [`analyze`](#analyze)
     - [`list-indicators`](#list-indicators)
     - [Flags Reference](#flags-reference)
     - [Examples](#examples)
+  - [Input Validation](#input-validation)
   - [Technical Indicators](#technical-indicators)
     - [Overlay Indicators](#overlay-indicators)
     - [Oscillator Indicators](#oscillator-indicators)
@@ -42,6 +44,7 @@
     - [Excel Export](#excel-export)
     - [Chart Images](#chart-images)
   - [Date Range Behaviour](#date-range-behaviour)
+  - [Building as a Standalone Executable (.exe)](#building-as-a-standalone-executable-exe)
   - [Logging](#logging)
   - [Module Overview](#module-overview)
   - [License](#license)
@@ -58,12 +61,16 @@ Stock Analysis Tool is a fully featured command-line application for technical a
 
 The tool is built with [Typer](https://typer.tiangolo.com/) and [Rich](https://github.com/Textualize/rich) for a clean, professional terminal experience, and supports any ticker available on Yahoo Finance — including international exchanges such as ATHEX (`.AT` suffix).
 
+It can be used in two ways: via **command-line flags** for scripting and automation, or via the **interactive menu** for a guided experience — including when launched by double-clicking a bundled `.exe` file.
+
 ---
 
 ## Features
 
 | Feature | Description |
 |---|---|
+| 🖥️ **Interactive Mode** | Step-by-step guided menu that launches automatically when no flags are provided, or when the `.exe` is double-clicked |
+| ✅ **Input Validation** | All inputs are validated before any network requests: date ordering, future-date guards, known indicator keys, ticker format |
 | 📡 **Live Data Fetching** | Downloads historical OHLCV data from Yahoo Finance via `yfinance` |
 | 📐 **11 Technical Indicators** | Bollinger Bands, RSI, MACD, EMA 20/50/200, ATR, Stochastic, Volume |
 | 🎯 **Signal Detection** | Buy/sell markers from RSI crossovers, MACD crossovers, and golden/death crosses |
@@ -75,6 +82,7 @@ The tool is built with [Typer](https://typer.tiangolo.com/) and [Rich](https://g
 | 📅 **Preset Date Ranges** | `1m`, `3m`, `6m`, `1y`, `5y` shortcuts via `--period` |
 | 🎛️ **Selective Indicators** | Run only the indicators you want using repeated `--indicator` flags |
 | ⚙️ **Config File** | Set personal defaults in `config.yaml` — no retyping of common options |
+| 📦 **Bundleable as .exe** | Ships as a single executable via PyInstaller — no Python installation required |
 | 🪵 **Structured Logging** | Console + persistent log file; `--verbose` for full debug output |
 
 ---
@@ -84,7 +92,7 @@ The tool is built with [Typer](https://typer.tiangolo.com/) and [Rich](https://g
 ```
 TechnicalAnalysis/
 │
-├── main.py                   # CLI entry point (Typer app)
+├── main.py                   # CLI entry point (Typer app + interactive menu)
 ├── config.yaml               # Default settings (period, indicators)
 ├── requirements.txt
 │
@@ -123,7 +131,7 @@ TechnicalAnalysis/
 | `fpdf` | PDF report generation |
 | `openpyxl` | Excel workbook creation and export |
 | `typer[all]` | CLI framework with argument parsing and help generation |
-| `rich` | Terminal formatting, progress spinners, and tables |
+| `rich` | Terminal formatting, progress spinners, interactive prompts, and tables |
 | `PyYAML` | `config.yaml` parsing |
 | `python-dateutil` | Relative date arithmetic for period presets |
 
@@ -168,7 +176,7 @@ You should see the Typer help output listing the available commands.
 
 ## Configuration
 
-All default behaviour is controlled by **`config.yaml`** in the project root. Any flag passed on the command line takes precedence over the config file.
+All default behaviour is controlled by **`config.yaml`** in the project root. Any flag passed on the command line (or input entered in the interactive menu) takes precedence over the config file.
 
 ```yaml
 # config.yaml
@@ -202,11 +210,48 @@ If `config.yaml` is absent, all indicators are enabled and the period defaults t
 
 ## Usage
 
-All functionality is accessed through `main.py`. The tool uses a subcommand structure:
+All functionality is accessed through `main.py`. The tool supports two usage modes:
 
 ```
-python main.py [COMMAND] [OPTIONS]
+python main.py                        # Interactive menu (guided)
+python main.py [COMMAND] [OPTIONS]    # Flag-driven (scripting / automation)
 ```
+
+---
+
+### Interactive Mode
+
+When `main.py` is run **without any arguments** — or when the bundled `.exe` is double-clicked — the interactive menu launches automatically. It walks through every option step by step and validates each input before moving on:
+
+```
+╭────────────────────────────────────────╮
+│       📊  Stock Analysis Tool          │
+│  Interactive Mode — press Ctrl+C exit  │
+╰────────────────────────────────────────╯
+
+Ticker symbols (comma-separated, e.g. AAPL,TSLA,NVDA): AAPL,MSFT
+Use a preset period? [Y/n]: y
+Period (1m, 3m, 6m, 1y, 5y) [1y]: 6m
+Use all indicators? (recommended) [Y/n]: y
+Generate comparison chart? [y/N]: y
+Fetch fundamental data (P/E, market cap, …)? [y/N]: n
+Generate PDF report? [Y/n]: y
+Generate Excel workbook? [Y/n]: y
+Enable verbose / debug logging? [y/N]: n
+
+────────────── Configuration Summary ──────────────
+  Tickers     AAPL, MSFT
+  Period      6m
+  Indicators  11 selected
+  Compare     Yes
+  ...
+
+Proceed with analysis? [Y/n]: y
+```
+
+All settings that can be passed as flags are also available in the interactive menu. The menu pre-fills defaults from `config.yaml` where applicable.
+
+---
 
 ### Commands
 
@@ -225,6 +270,8 @@ The primary command. Fetches data for each ticker, computes the selected indicat
 python main.py analyze [OPTIONS]
 ```
 
+If `--tickers` is omitted, the interactive menu launches automatically.
+
 ### `list-indicators`
 
 Prints a formatted table of all supported indicator keys, their full names, and descriptions. Use this to look up the exact key strings required by `--indicator`.
@@ -239,7 +286,7 @@ python main.py list-indicators
 
 | Flag | Short | Type | Default | Description |
 |---|---|---|---|---|
-| `--tickers` | `-t` | `str` | **Required** | Comma-separated ticker symbols, e.g. `AAPL,TSLA,NVDA` |
+| `--tickers` | `-t` | `str` | *interactive menu* | Comma-separated ticker symbols, e.g. `AAPL,TSLA,NVDA` |
 | `--start` | `-s` | `str` | Derived from `--period` | Start date in `YYYY-MM-DD` format |
 | `--end` | `-e` | `str` | Today | End date in `YYYY-MM-DD` format |
 | `--period` | `-p` | `str` | `1y` (from config) | Preset range: `1m`, `3m`, `6m`, `1y`, `5y`. Ignored if `--start` is set |
@@ -335,9 +382,27 @@ python main.py analyze --help
 
 ---
 
+## Input Validation
+
+All inputs — whether provided via flags or the interactive menu — are validated before any network request is made. The tool will print a clear error and exit (or re-prompt in interactive mode) when:
+
+| Condition | Error |
+|---|---|
+| No tickers provided | "At least one ticker is required" |
+| Ticker format invalid | Rejects strings that are not letters or letter+`.`+letters |
+| Unknown `--period` value | Must be one of `1m`, `3m`, `6m`, `1y`, `5y` |
+| Invalid date format | Must be `YYYY-MM-DD`; rejects anything else |
+| Start date in the future | Rejected |
+| End date before start date | Rejected |
+| End date in the future | Rejected |
+| Unknown indicator key | Lists valid options and exits |
+| No indicators selected | "At least one indicator must be selected" |
+
+---
+
 ## Technical Indicators
 
-All indicators are computed with [pandas-ta](https://github.com/twopirllc/pandas-ta) on cleaned OHLCV data. A **6-month warmup window** is silently fetched before your requested start date so that long-period indicators (EMA 200, MACD) are fully populated from the very first visible bar. Warmup rows are trimmed before any chart, report, or export is written.
+All indicators are computed with [pandas-ta](https://github.com/twopirllc/pandas-ta) on cleaned OHLCV data. A **12-month warmup window** is silently fetched before your requested start date so that long-period indicators (EMA 200, MACD) are fully populated from the very first visible bar. Warmup rows are trimmed before any chart, report, or export is written.
 
 ### Overlay Indicators
 
@@ -451,7 +516,65 @@ Dates are resolved in the following order of precedence:
 | `--period 6m --end 2024-12-31` | 6 months before 2024-12-31 |
 | *(no flags)* | Reads `period` from `config.yaml`, default `1y` |
 
-> ⚠️ **Warmup window:** An extra 6 months of data is always fetched silently before your start date. This ensures long-lookback indicators (EMA 200 needs ~200 bars; MACD needs ~35) are fully calculated from your first visible bar. Warmup rows never appear in charts, the PDF, or the Excel export.
+> ⚠️ **Warmup window:** An extra 12 months of data is always fetched silently before your start date. This ensures long-lookback indicators (EMA 200 needs ~200 bars; MACD needs ~35) are fully calculated from your first visible bar. Warmup rows never appear in charts, the PDF, or the Excel export.
+
+---
+
+## Building as a Standalone Executable (.exe)
+
+The tool can be packaged into a single `.exe` file using [PyInstaller](https://pyinstaller.org/). Once built, the executable requires no Python installation and can be launched either by double-clicking (which triggers the interactive menu) or from a terminal with flags.
+
+**1. Install PyInstaller**
+
+```bash
+pip install pyinstaller
+```
+
+**2. Build the executable**
+
+```bash
+pyinstaller --onefile --name stocktool --add-data "config.yaml;." main.py
+```
+
+> On macOS / Linux, use `:` as the data separator instead of `;`:
+> ```bash
+> pyinstaller --onefile --name stocktool --add-data "config.yaml:." main.py
+> ```
+
+**3. Find your executable**
+
+The built file is placed in the `dist/` folder:
+
+```
+dist/
+└── stocktool.exe      # Windows
+    stocktool          # macOS / Linux
+```
+
+**4. Running the executable**
+
+```bash
+# Interactive menu (double-click, or run with no arguments)
+./dist/stocktool
+
+# Flag-driven, same as python main.py
+./dist/stocktool analyze -t AAPL --period 6m
+./dist/stocktool list-indicators
+```
+
+**Notes on bundling**
+
+- When launched by double-clicking, the tool automatically pauses at the end with "Press Enter to exit…" so the terminal window does not disappear immediately.
+- If `config.yaml` is not found next to the executable at runtime, all defaults still apply — the app will not crash.
+- Some data-heavy packages (`yfinance`, `pandas-ta`, `mplfinance`) pull in large transitive dependencies. Expect the bundled `.exe` to be roughly 100–200 MB.
+- If PyInstaller misses hidden imports, add them explicitly:
+  ```bash
+  pyinstaller --onefile --name stocktool \
+    --add-data "config.yaml;." \
+    --hidden-import "pandas_ta" \
+    --hidden-import "mplfinance" \
+    main.py
+  ```
 
 ---
 
@@ -476,7 +599,7 @@ The log file persists between runs and appends continuously, making it useful fo
 
 | Module | Responsibility |
 |---|---|
-| `main.py` | Typer CLI app, command routing, and orchestration of the full pipeline |
+| `main.py` | Typer CLI app, interactive menu, input validation, and orchestration of the full pipeline |
 | `utils/fetchstockdata.py` | Downloads OHLCV data from Yahoo Finance, flattens MultiIndex columns |
 | `utils/cleandata.py` | Coerces OHLCV columns to numeric, drops rows containing NaN |
 | `utils/analyzedata.py` | Computes all technical indicators via `pandas-ta`; only requested indicators are calculated |

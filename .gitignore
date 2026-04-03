@@ -1,3 +1,6 @@
 ta/
 data/
 __pycache__/
+build/
+dist/
+Stocksight.spec
