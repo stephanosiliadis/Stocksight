@@ -59,7 +59,7 @@ app = typer.Typer(
     invoke_without_command=True,  # lets the callback fire with no subcommand
 )
 
-# Preset period → months
+# Preset period -> months
 _PERIOD_MAP: dict[str, int] = {
     "1m": 1,
     "3m": 3,
@@ -451,7 +451,7 @@ def _run_analysis(
     no_excel: bool,
     verbose: bool,
 ) -> None:
-    """Execute the full fetch → analyse → export pipeline."""
+    """Execute the full fetch -> analyse -> export pipeline."""
     _setup_logging(verbose, DATA_DIR)
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -463,7 +463,7 @@ def _run_analysis(
 
     console.rule("[bold cyan]Stock Analysis Tool[/bold cyan]")
     console.print(f"  Tickers   : [bold]{', '.join(ticker_list)}[/bold]")
-    console.print(f"  Date range: {start_date} → {end_date}")
+    console.print(f"  Date range: {start_date} -> {end_date}")
     console.print(f"  Indicators: {', '.join(active_indicators)}")
     console.print()
 
@@ -533,7 +533,7 @@ def _run_analysis(
     if not no_excel:
         excel_path = os.path.join(DATA_DIR, "stock_data.xlsx")
         save_to_excel(analyzed_data, excel_path)
-        console.print(f"  [green]✓[/green] Excel saved → {excel_path}")
+        console.print(f"  [green]✓[/green] Excel saved -> {excel_path}")
 
     if not no_pdf:
         pdf_path = generate_pdf_report(
@@ -545,7 +545,7 @@ def _run_analysis(
             comparison_plot=comparison_path,
             output_dir=DATA_DIR,
         )
-        console.print(f"  [green]✓[/green] PDF saved → {pdf_path}")
+        console.print(f"  [green]✓[/green] PDF saved -> {pdf_path}")
 
     console.rule()
     console.print(
