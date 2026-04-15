@@ -135,13 +135,13 @@ def analyze(
     start: Optional[str] = typer.Option(
         None,
         "--start",
-        "-s",
+        "-sd",
         help="Start date in YYYY-MM-DD format.",
     ),
     end: Optional[str] = typer.Option(
         None,
         "--end",
-        "-e",
+        "-ed",
         help="End date in YYYY-MM-DD format (default: today).",
     ),
     period: Optional[str] = typer.Option(
@@ -176,6 +176,7 @@ def analyze(
     statements: bool = typer.Option(
         False,
         "--statements",
+        "-s",
         help=(
             "Fetch and include full financial statements "
             "(Income Statement / P&L, Balance Sheet, Cash Flow) in the report."
