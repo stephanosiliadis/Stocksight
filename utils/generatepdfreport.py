@@ -258,7 +258,7 @@ def _build_fundamentals_rows(fund: dict) -> list[tuple[str, str]]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PDF helpers
+# PDF helpers — existing two-column layout
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -282,6 +282,275 @@ def _draw_two_col_table(pdf: FPDF, rows: list[tuple[str, str]], col_w: float = 4
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# PDF helpers — financial statement multi-period table
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Colour scheme
+_HDR_R, _HDR_G, _HDR_B = 28, 40, 65  # dark navy header
+_ALT_R, _ALT_G, _ALT_B = 240, 243, 250  # light lavender alt rows
+_POS_R, _POS_G, _POS_B = 230, 247, 235  # subtle green for positive P&L
+_NEG_R, _NEG_G, _NEG_B = 253, 235, 235  # subtle red for negative P&L
+
+# Rows whose values should be coloured green/red based on sign
+_SIGNED_ROWS = {
+    "Net Income",
+    "Operating Income",
+    "Gross Profit",
+    "EBITDA",
+    "Free Cash Flow",
+    "Operating Cash Flow",
+}
+
+
+def _draw_section_header(pdf: FPDF, title: str) -> None:
+    """Render a styled section sub-header inside a ticker page."""
+    pdf.set_font("Arial", "B", 11)
+    pdf.set_fill_color(70, 90, 130)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 8, text=f"  {title}", new_x="LMARGIN", new_y="NEXT", fill=True)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(1)
+
+
+def _draw_financial_table(
+    pdf: FPDF,
+    title: str,
+    rows: list[tuple],
+    period_labels: list[str],
+) -> None:
+    """
+    Render a financial statement as a styled multi-period table.
+
+    Args:
+        title:          Section heading (e.g. "Income Statement (P&L)").
+        rows:           List of tuples: (label, val_period0, val_period1, …).
+        period_labels:  Year/quarter strings for each value column.
+    """
+    _draw_section_header(pdf, title)
+
+    if not rows or not period_labels:
+        pdf.set_font("Arial", "I", 9)
+        pdf.cell(
+            0,
+            6,
+            text="  Data not available for this ticker.",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+        pdf.ln(3)
+        return
+
+    n = min(len(period_labels), 3)  # cap at 3 periods
+    page_w = 190.0  # usable width (A4 − margins)
+    label_w = 72.0
+    val_w = (page_w - label_w) / n
+
+    # ── Header row ────────────────────────────────────────────────────────────
+    pdf.set_fill_color(_HDR_R, _HDR_G, _HDR_B)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(label_w, 7, text="  Metric", border=1, fill=True)
+    for lbl in period_labels[:n]:
+        pdf.cell(val_w, 7, text=lbl, border=1, fill=True, align="C")
+    pdf.ln()
+    pdf.set_text_color(0, 0, 0)
+
+    # ── Data rows ─────────────────────────────────────────────────────────────
+    for idx, row in enumerate(rows):
+        label = _sanitize(str(row[0]))
+        values = [str(v) for v in row[1 : n + 1]]
+
+        # Determine row fill colour
+        use_signed = label in _SIGNED_ROWS
+        if use_signed and values:
+            first_val = values[0]
+            if first_val.startswith("-"):
+                pdf.set_fill_color(_NEG_R, _NEG_G, _NEG_B)
+            else:
+                pdf.set_fill_color(_POS_R, _POS_G, _POS_B)
+        elif idx % 2 == 0:
+            pdf.set_fill_color(_ALT_R, _ALT_G, _ALT_B)
+        else:
+            pdf.set_fill_color(255, 255, 255)
+
+        pdf.set_font("Arial", "B", 9)
+        pdf.cell(label_w, 6, text=f"  {label}", border=1, fill=True)
+        pdf.set_font("Arial", "", 9)
+        for val in values:
+            # Colour negative numbers in red text
+            if val.startswith("-"):
+                pdf.set_text_color(180, 40, 40)
+            else:
+                pdf.set_text_color(0, 0, 0)
+            pdf.cell(val_w, 6, text=val, border=1, fill=True, align="R")
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln()
+
+    pdf.ln(4)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PDF helpers — backtest results
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _draw_backtest_section(pdf: FPDF, bt: dict) -> None:
+    """
+    Render the backtest summary KPI grid and trade log table.
+    """
+    _draw_section_header(pdf, "Backtest Results")
+
+    if not bt:
+        pdf.set_font("Arial", "I", 9)
+        pdf.cell(
+            0,
+            6,
+            text="  Backtest unavailable (signals indicator must be active).",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+        pdf.ln(3)
+        return
+
+    # ── KPI summary grid ──────────────────────────────────────────────────────
+    def _kpi_row(pairs: list[tuple[str, str, bool]]) -> None:
+        """Render a row of KPI cells. Each tuple: (label, value, is_positive)."""
+        cell_w = 190.0 / len(pairs)
+        for lbl, val, positive in pairs:
+            pdf.set_fill_color(40, 55, 90)
+            pdf.set_text_color(180, 200, 230)
+            pdf.set_font("Arial", "B", 7)
+            pdf.cell(cell_w, 5, text=lbl.upper(), border=0, fill=True, align="C")
+        pdf.ln()
+        for lbl, val, positive in pairs:
+            pdf.set_fill_color(50, 65, 105)
+            if positive is True:
+                pdf.set_text_color(100, 220, 140)
+            elif positive is False:
+                pdf.set_text_color(240, 100, 100)
+            else:
+                pdf.set_text_color(255, 255, 255)
+            pdf.set_font("Arial", "B", 11)
+            pdf.cell(cell_w, 9, text=val, border=0, fill=True, align="C")
+        pdf.ln()
+        pdf.set_text_color(0, 0, 0)
+
+    total_ret = bt.get("total_return_pct", 0.0)
+    bh_ret = bt.get("buy_hold_return_pct", 0.0)
+    alpha = bt.get("alpha_pct", 0.0)
+    drawdown = bt.get("max_drawdown_pct", 0.0)
+    sharpe = bt.get("sharpe_ratio", 0.0)
+    win_rate = bt.get("win_rate", 0.0)
+    final_val = bt.get("final_value", 0.0)
+    init_cap = bt.get("initial_capital", 10000.0)
+
+    _kpi_row(
+        [
+            ("Strategy Return", f"{total_ret:+.2f}%", total_ret >= 0),
+            ("Buy & Hold", f"{bh_ret:+.2f}%", bh_ret >= 0),
+            ("Alpha", f"{alpha:+.2f}%", alpha >= 0),
+            ("Max Drawdown", f"{drawdown:.2f}%", drawdown >= -5),
+        ]
+    )
+    pdf.ln(1)
+    _kpi_row(
+        [
+            ("Initial Capital", f"${init_cap:,.0f}", None),
+            ("Final Value", f"${final_val:,.2f}", final_val >= init_cap),
+            ("Sharpe Ratio", f"{sharpe:.2f}", sharpe >= 1),
+            ("Win Rate", f"{win_rate:.1f}%", win_rate >= 50),
+        ]
+    )
+    pdf.ln(4)
+
+    # ── Trade log ─────────────────────────────────────────────────────────────
+    trades = bt.get("trades", [])
+    if not trades:
+        pdf.set_font("Arial", "I", 9)
+        pdf.cell(0, 6, text="  No trades were executed.", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+        return
+
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(
+        0, 7, text=f"Trade Log  ({len(trades)} entries)", new_x="LMARGIN", new_y="NEXT"
+    )
+
+    col_widths = [
+        18,
+        20,
+        22,
+        26,
+        26,
+        26,
+        26,
+        26,
+    ]  # Type Date Price Shares Value P&L P&L%
+    headers = ["Type", "Date", "Price", "Shares", "Value", "P&L", "P&L %", ""]
+
+    # Header
+    pdf.set_fill_color(_HDR_R, _HDR_G, _HDR_B)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 8)
+    for w, h in zip(col_widths, headers):
+        pdf.cell(w, 6, text=h, border=1, fill=True, align="C")
+    pdf.ln()
+    pdf.set_text_color(0, 0, 0)
+
+    # Rows
+    for i, t in enumerate(trades):
+        is_buy = t.kind == "BUY"
+        pnl = t.pnl
+        pnl_pct = t.pnl_pct
+
+        fill = i % 2 == 0
+        pdf.set_fill_color(245, 247, 252 if fill else 255)
+
+        # Type cell coloured
+        if is_buy:
+            pdf.set_fill_color(225, 245, 230)
+            pdf.set_text_color(30, 140, 60)
+        else:
+            (
+                pdf.set_fill_color(250, 230, 230)
+                if (pnl or 0) < 0
+                else pdf.set_fill_color(225, 245, 230)
+            )
+            (
+                pdf.set_text_color(180, 40, 40)
+                if (pnl or 0) < 0
+                else pdf.set_text_color(30, 140, 60)
+            )
+
+        pdf.set_font("Arial", "B", 8)
+        pdf.cell(col_widths[0], 5, text=t.kind, border=1, fill=True, align="C")
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_fill_color(245, 247, 252) if fill else pdf.set_fill_color(255, 255, 255)
+        pdf.set_font("Arial", "", 8)
+
+        date_str = (
+            t.date.strftime("%Y-%m-%d")
+            if hasattr(t.date, "strftime")
+            else str(t.date)[:10]
+        )
+        row_vals = [
+            date_str,
+            f"${t.price:.2f}",
+            f"{t.shares:.3f}",
+            f"${t.value:,.2f}",
+            f"${pnl:,.2f}" if pnl is not None else "-",
+            f"{pnl_pct:+.2f}%" if pnl_pct is not None else "-",
+            "",
+        ]
+        for w, v in zip(col_widths[1:], row_vals):
+            pdf.cell(w, 5, text=v, border=1, fill=fill, align="R")
+        pdf.ln()
+
+    pdf.ln(4)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -293,13 +562,19 @@ def generate_pdf_report(
     indicators: list | None = None,
     fundamentals_data: dict | None = None,
     comparison_plot: str | None = None,
+    financial_statements: dict | None = None,
+    backtest_results: dict | None = None,
     output_dir: str = "data",
 ) -> str:
     """
     Generate a comprehensive PDF report with:
       - Per-ticker key statistics table
       - Fundamental data table (when available)
+      - Income Statement / P&L (when available)
+      - Balance Sheet (when available)
+      - Cash Flow Statement (when available)
       - Plain-English technical commentary
+      - Backtest results + trade log (when available)
       - Technical analysis chart
       - Multi-ticker comparison chart (when provided)
     """
@@ -307,6 +582,10 @@ def generate_pdf_report(
         indicators = []
     if fundamentals_data is None:
         fundamentals_data = {}
+    if financial_statements is None:
+        financial_statements = {}
+    if backtest_results is None:
+        backtest_results = {}
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -341,6 +620,17 @@ def generate_pdf_report(
         pdf.set_font("Arial", "I", 9)
         pdf.multi_cell(0, 6, text=_sanitize(f"Indicators: {label_str}"), align="C")
 
+    # Feature badges
+    badges = []
+    if financial_statements:
+        badges.append("Financial Statements")
+    if backtest_results:
+        badges.append("Backtest")
+    if badges:
+        pdf.set_font("Arial", "I", 9)
+        pdf.set_x(pdf.l_margin)  # ← FIX
+        pdf.multi_cell(0, 5, text=f"Includes: {', '.join(badges)}", align="C")
+
     pdf.ln(6)
 
     # ── Comparison chart (multi-ticker) ───────────────────────────────────────
@@ -360,43 +650,64 @@ def generate_pdf_report(
 
         pdf.add_page()
 
-        # Section header bar
-        pdf.set_fill_color(40, 40, 60)
+        # ── Ticker banner ─────────────────────────────────────────────────────
+        pdf.set_fill_color(22, 33, 60)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Arial", "B", 15)
-        pdf.cell(0, 11, text=f"  {ticker}", new_x="LMARGIN", new_y="NEXT", fill=True)
+        pdf.cell(0, 12, text=f"  {ticker}", new_x="LMARGIN", new_y="NEXT", fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.ln(3)
 
-        # Key statistics table
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 8, text="Key Statistics", new_x="LMARGIN", new_y="NEXT")
+        # ── Key Statistics ────────────────────────────────────────────────────
+        _draw_section_header(pdf, "Key Statistics")
         summary_rows = _build_summary_rows(data, indicators)
         if summary_rows:
             _draw_two_col_table(pdf, summary_rows)
         pdf.ln(4)
 
-        # Fundamental data table
+        # ── Fundamental Data ──────────────────────────────────────────────────
         fund = fundamentals_data.get(ticker, {})
         if fund:
-            pdf.set_font("Arial", "B", 11)
-            pdf.cell(0, 8, text="Fundamental Data", new_x="LMARGIN", new_y="NEXT")
+            _draw_section_header(pdf, "Fundamental Data")
             _draw_two_col_table(pdf, _build_fundamentals_rows(fund))
             pdf.ln(4)
 
-        # Technical commentary
-        pdf.set_font("Arial", "B", 11)
-        pdf.cell(0, 8, text="Technical Commentary", new_x="LMARGIN", new_y="NEXT")
+        # ── Income Statement (P&L) ────────────────────────────────────────────
+        stmts = financial_statements.get(ticker, {})
+        if stmts:
+            income = stmts.get("income_stmt")
+            if income:
+                rows, labels = income
+                _draw_financial_table(pdf, "Income Statement (P&L)", rows, labels)
+
+            # ── Balance Sheet ─────────────────────────────────────────────────
+            balance = stmts.get("balance_sheet")
+            if balance:
+                rows, labels = balance
+                _draw_financial_table(pdf, "Balance Sheet", rows, labels)
+
+            # ── Cash Flow ─────────────────────────────────────────────────────
+            cashflow = stmts.get("cashflow")
+            if cashflow:
+                rows, labels = cashflow
+                _draw_financial_table(pdf, "Cash Flow Statement", rows, labels)
+
+        # ── Technical Commentary ──────────────────────────────────────────────
+        _draw_section_header(pdf, "Technical Commentary")
         pdf.set_font("Arial", "", 10)
         commentary = generate_trend_commentary(ticker, data, indicators)
         pdf.multi_cell(0, 6, text=_sanitize(commentary))
         pdf.ln(4)
 
-        # Chart
+        # ── Backtest Results ──────────────────────────────────────────────────
+        bt = backtest_results.get(ticker)
+        if bt is not None:
+            _draw_backtest_section(pdf, bt)
+
+        # ── Technical Chart ───────────────────────────────────────────────────
         plot_path = plots.get(ticker)
         if plot_path and os.path.exists(plot_path):
-            pdf.set_font("Arial", "B", 11)
-            pdf.cell(0, 8, text="Technical Chart", new_x="LMARGIN", new_y="NEXT")
+            _draw_section_header(pdf, "Technical Chart")
             pdf.image(plot_path, x=10, w=185)
             pdf.ln(4)
 
