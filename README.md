@@ -47,6 +47,7 @@
   - [Building as a Standalone Executable (.exe)](#building-as-a-standalone-executable-exe)
   - [Logging](#logging)
   - [Module Overview](#module-overview)
+  - [Roadmap and TODOs](#roadmap-and-todos)
   - [License](#license)
 
 ---
@@ -609,6 +610,119 @@ The log file persists between runs and appends continuously, making it useful fo
 | `utils/comparison.py` | Generates a normalised relative performance line chart across multiple tickers |
 | `utils/generatepdfreport.py` | Assembles the full PDF report: tables, commentary, and embedded chart images |
 | `utils/savetoexcel.py` | Writes all ticker DataFrames to a multi-sheet Excel workbook |
+
+---
+
+## Roadmap and TODOs
+
+This roadmap tracks planned fixes, product improvements, and technical work for
+StockSight. Priorities are grouped by impact and implementation order.
+
+### High Priority
+
+- [ ] Add a back/cancel option to the interactive flow so users can revise an
+      earlier answer without restarting the application.
+- [ ] Add historical high/low statistics for the selected date range and include
+      them in the PDF report, Excel export, and terminal summary.
+- [ ] Add validation for empty ticker input, duplicate tickers, unsupported
+      symbols, invalid date ranges, and unsupported period values before network
+      requests are made.
+- [ ] Improve error handling around Yahoo Finance failures, rate limits, missing
+      data, and partially available fundamentals so one failed ticker does not
+      break the full run.
+- [ ] Update the README so documented flags match the current CLI, including
+      `--statements`, `--backtest`, `--capital`, and the actual short options.
+- [ ] Fix text encoding issues in documentation and source comments where
+      mojibake characters appear instead of intended symbols.
+
+### Analysis and Reporting
+
+- [ ] Add a portfolio-level summary when multiple tickers are analyzed,
+      including best/worst performer, average return, volatility, and correlation.
+- [ ] Add more historical range metrics: 52-week high/low, all-time high within
+      the downloaded data, drawdown from high, and distance from support and
+      resistance.
+- [ ] Extend the backtest module with transaction costs, slippage, configurable
+      position sizing, stop-loss, take-profit, and max-position constraints.
+- [ ] Add benchmark comparison support, such as comparing selected tickers
+      against SPY, QQQ, or a user-provided benchmark ticker.
+- [ ] Add risk metrics to reports: annualized volatility, beta versus benchmark,
+      downside deviation, Sortino ratio, and value-at-risk.
+- [ ] Include earnings dates and upcoming corporate events in the report when
+      available from the data provider.
+- [ ] Add optional CSV export for users who do not need a formatted Excel
+      workbook.
+- [ ] Add report metadata, including command arguments, data source timestamp,
+      package version, and generated file paths.
+
+### User Experience
+
+- [ ] Add an interactive review screen before execution that lets users edit
+      tickers, date range, indicators, output choices, and analysis options.
+- [ ] Add a saved-profile feature for common analysis setups, such as dividend
+      stocks, growth stocks, index ETFs, or custom watchlists.
+- [ ] Improve terminal output with a clear per-ticker status table showing
+      fetched rows, generated indicators, warnings, and output paths.
+- [ ] Add clearer help text for indicators, especially when indicators depend on
+      other calculated columns.
+- [ ] Add a `--output-dir` option so generated reports can be written outside the
+      default `data/` directory.
+- [ ] Add a `--watchlist` option that reads tickers from a text, CSV, or YAML
+      file.
+
+### Data and Reliability
+
+- [ ] Add a lightweight cache for downloaded price data and fundamentals to
+      reduce repeated Yahoo Finance requests during development and batch runs.
+- [ ] Add retry and timeout configuration for all network calls.
+- [ ] Normalize ticker handling for international exchanges and document
+      provider-specific suffix requirements.
+- [ ] Preserve raw downloaded data separately from cleaned/analyzed data so data
+      quality issues are easier to inspect.
+- [ ] Add schema checks for required OHLCV columns before indicator calculation.
+- [ ] Add graceful handling for missing volume, adjusted close, fundamentals, or
+      statement rows.
+
+### Testing and Quality
+
+- [ ] Add unit tests for date resolution, indicator selection, signal detection,
+      support/resistance detection, and backtest calculations.
+- [ ] Add integration tests that run a small analysis with mocked `yfinance`
+      responses and verify expected PDF, Excel, and chart outputs are created.
+- [ ] Add regression tests for PDF generation so sections remain present when
+      fundamentals, statements, comparison, or backtests are enabled.
+- [ ] Add static checks for formatting, imports, and type hints.
+- [ ] Add CI that installs dependencies, runs tests, and builds the executable
+      spec on every pull request.
+- [ ] Add sample fixture data so tests do not depend on live market data.
+
+### Packaging and Distribution
+
+- [ ] Review the PyInstaller spec and document the preferred production build
+      command.
+- [ ] Add application versioning and expose it through `--version`.
+- [ ] Add release notes or a changelog for user-facing changes.
+- [ ] Confirm the packaged executable works on a clean Windows machine without a
+      local Python installation.
+- [ ] Add dependency pinning or a lock file to make installs and builds
+      reproducible.
+
+### Future Enhancements
+
+- [ ] Add a desktop or web UI for users who prefer not to work from the command
+      line.
+- [ ] Add alerts for price crossing moving averages, support/resistance levels,
+      RSI thresholds, or new buy/sell signals.
+- [ ] Add sector and industry comparison views for peer analysis.
+- [ ] Add dividend history, dividend yield trends, and payout ratio analysis.
+- [ ] Add valuation metrics such as price-to-sales, price-to-book, EV/EBITDA,
+      free-cash-flow yield, and historical valuation ranges.
+- [ ] Add export templates for professional report branding, including logo,
+      color palette, and disclaimer text.
+- [ ] Add support for alternative data providers to reduce dependency on a
+      single source.
+- [ ] Add a proper disclaimer section explaining that generated analysis is
+      informational and not financial advice.
 
 ---
 
