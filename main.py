@@ -13,15 +13,18 @@ from rich.console import Console
 from rich.table import Table
 
 from utils.analyzedata import ALL_INDICATORS, analyze_data
-from utils.cleandata import \
-    clean_data  # noqa: imported to satisfy package init
+from utils.cleandata import clean_data  # noqa: imported to satisfy package init
 from utils.fetchstockdata import fetch_stock_data
 from utils.generatepdfreport import generate_pdf_report
 from utils.generateplots import generate_plots
 from utils.savetoexcel import save_to_excel
 from utils.stats import compute_range_stats
-from utils.validators import (ValidationError, validate_backtest_capital,
-                              validate_indicators, validate_inputs)
+from src.utils.validators import (
+    ValidationError,
+    validate_backtest_capital,
+    validate_indicators,
+    validate_inputs,
+)
 
 console = Console()
 

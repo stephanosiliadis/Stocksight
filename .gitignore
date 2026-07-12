@@ -1,7 +1,7 @@
-ta/
-data/
+.venv/
+outputs/
+cache/
 __pycache__/
 build/
 dist/
 Stocksight.spec
-icon.ico
