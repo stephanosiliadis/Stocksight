@@ -1,38 +1,4 @@
-"""
-stocktool — CLI stock analysis tool
-====================================
-
-Usage examples
---------------
-# Analyse Apple for the last year (all indicators):
-    python main.py analyze -t AAPL
-
-# Analyse multiple tickers over a specific period:
-    python main.py analyze -t AAPL,TSLA,NVDA --period 6m
-
-# Select only specific indicators:
-    python main.py analyze -t AAPL -i rsi -i macd -i ema50 -i ema200
-
-# Include fundamentals and a comparison chart:
-    python main.py analyze -t AAPL,MSFT,GOOG --compare --fundamentals
-
-# Include full financial statements (P&L, Balance Sheet, Cash Flow):
-    python main.py analyze -t AAPL --statements
-
-# Run a backtest using detected signals:
-    python main.py analyze -t AAPL -i rsi -i macd -i signals --backtest
-
-# Full analysis — everything enabled:
-    python main.py analyze -t AAPL,MSFT --compare --fundamentals --statements --backtest
-
-# Use explicit date range, skip Excel output:
-    python main.py analyze -t TSLA --start 2024-01-01 --end 2024-12-31 --no-excel
-
-# List all available indicators:
-    python main.py list-indicators
-"""
-
-import logging
+﻿import logging
 import os
 import re
 import sys
@@ -53,10 +19,15 @@ from utils.generatepdfreport import generate_pdf_report
 from utils.generateplots import generate_plots
 from utils.savetoexcel import save_to_excel
 from utils.stats import compute_range_stats
+from utils.validators import (
+    ValidationError,
+    validate_inputs,
+    validate_period,
+    validate_tickers,
+)
 
 console = Console()
 
-# ─── Typer app ────────────────────────────────────────────────────────────────
 app = typer.Typer(
     name="stocktool",
     help="A CLI tool for comprehensive technical stock analysis.",
@@ -73,9 +44,6 @@ _PERIOD_MAP: dict[str, int] = {
 }
 
 DATA_DIR = "data"
-
-
-# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
 def _load_config() -> dict:
@@ -122,9 +90,6 @@ def _setup_logging(verbose: bool, output_dir: str) -> None:
             logging.FileHandler(os.path.join(output_dir, "stocktool.log")),
         ],
     )
-
-
-# ─── Commands ─────────────────────────────────────────────────────────────────
 
 
 @app.command()
@@ -214,7 +179,21 @@ def analyze(
 
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # ── Resolve indicators ────────────────────────────────────────────────────
+    # Pre-flight input validation -- runs before any network call so users
+    # get a clear, immediate error instead of a half-completed run.
+    try:
+        raw_tickers = [t for t in tickers.split(",")]
+        cleaned_tickers, start, end, period = validate_inputs(
+            raw_tickers,
+            start,
+            end,
+            period,
+            period_map=_PERIOD_MAP,
+            ticker_re=_TICKER_RE,
+        )
+    except ValidationError as exc:
+        console.print(f"[bold red]Input error: {exc}[/bold red]")
+        raise typer.Exit(1)
     if not indicators:
         active_indicators = defaults.get("indicators", ALL_INDICATORS)
     else:
@@ -235,10 +214,8 @@ def analyze(
         )
         active_indicators = list(active_indicators) + ["signals"]
 
-    # ── Resolve tickers ───────────────────────────────────────────────────────
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
 
-    # ── Resolve dates ─────────────────────────────────────────────────────────
     effective_period = period or defaults.get("period", "1y")
     start_date, end_date = _resolve_dates(start, end, effective_period)
 
@@ -249,7 +226,6 @@ def analyze(
         datetime.strptime(start_date, "%Y-%m-%d") - relativedelta(months=12)
     ).strftime("%Y-%m-%d")
 
-    # ── Summary banner ────────────────────────────────────────────────────────
     console.rule("[bold cyan]Stock Analysis Tool[/bold cyan]")
     console.print(f"  Tickers   : [bold]{', '.join(ticker_list)}[/bold]")
     console.print(f"  Date range: {start_date} -> {end_date}")
@@ -265,7 +241,6 @@ def analyze(
         console.print(f"  Extras    : {', '.join(extras)}")
     console.print()
 
-    # ── Per-ticker processing ─────────────────────────────────────────────────
     analyzed_data: dict = {}
     plots: dict = {}
     fundamentals_data: dict = {}
@@ -378,7 +353,6 @@ def analyze(
         console.print("[bold red]No valid data fetched. Exiting.[/bold red]")
         raise typer.Exit(1)
 
-    # ── Comparison chart ──────────────────────────────────────────────────────
     comparison_path = None
     if compare and len(analyzed_data) > 1:
         from utils.comparison import generate_comparison_plot
@@ -386,13 +360,11 @@ def analyze(
         comparison_path = generate_comparison_plot(analyzed_data, ticker_list, DATA_DIR)
         console.print(f"  [green]✓[/green] Comparison chart saved")
 
-    # ── Excel export ──────────────────────────────────────────────────────────
     if not no_excel:
         excel_path = os.path.join(DATA_DIR, "stock_data.xlsx")
         save_to_excel(analyzed_data, excel_path, range_stats=range_stats)
         console.print(f"  [green]✓[/green] Excel saved -> {excel_path}")
 
-    # ── PDF report ────────────────────────────────────────────────────────────
     if not no_pdf:
         pdf_path = generate_pdf_report(
             ticker_list,
@@ -421,6 +393,10 @@ def list_indicators():
         "bollinger": (
             "Bollinger Bands",
             "Volatility bands around a moving average (upper/lower)",
+        ),
+        "rsi": (
+            "RSI (14)",
+            "Momentum oscillator 0–100; >70 overbought, <30 oversold",
         ),
         "rsi": ("RSI (14)", "Momentum oscillator 0–100; >70 overbought, <30 oversold"),
         "macd": ("MACD", "Trend-following momentum: MACD line, signal, histogram"),
@@ -457,7 +433,6 @@ def list_indicators():
     )
 
 
-# ─── Interactive wizard ───────────────────────────────────────────────────────
 # Every prompt accepts 'b'/'back' to revisit the previous step and
 # 'c'/'cancel'/'q' to abort the wizard entirely.
 

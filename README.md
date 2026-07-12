@@ -620,9 +620,9 @@ StockSight. Priorities are grouped by impact and implementation order.
 
 ### High Priority
 
-- [ ] Add a back/cancel option to the interactive flow so users can revise an
+- [x] Add a back/cancel option to the interactive flow so users can revise an
       earlier answer without restarting the application.
-- [ ] Add historical high/low statistics for the selected date range and include
+- [x] Add historical high/low statistics for the selected date range and include
       them in the PDF report, Excel export, and terminal summary.
 - [ ] Add validation for empty ticker input, duplicate tickers, unsupported
       symbols, invalid date ranges, and unsupported period values before network
@@ -632,8 +632,6 @@ StockSight. Priorities are grouped by impact and implementation order.
       break the full run.
 - [ ] Update the README so documented flags match the current CLI, including
       `--statements`, `--backtest`, `--capital`, and the actual short options.
-- [ ] Fix text encoding issues in documentation and source comments where
-      mojibake characters appear instead of intended symbols.
 
 ### Analysis and Reporting
 
