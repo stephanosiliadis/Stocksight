@@ -34,6 +34,8 @@ Usage examples
 
 import logging
 import os
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -437,5 +439,332 @@ def list_indicators():
     )
 
 
+# ─── Interactive wizard ───────────────────────────────────────────────────────
+# Every prompt accepts 'b'/'back' to revisit the previous step and
+# 'c'/'cancel'/'q' to abort the wizard entirely.
+
+_TICKER_RE = re.compile(r"^[A-Za-z]+(\.[A-Za-z]+)?$")
+
+_STEP_ORDER = [
+    "tickers",
+    "date_mode",
+    "period",
+    "start",
+    "end",
+    "indicator_mode",
+    "indicators",
+    "compare",
+    "fundamentals",
+    "statements",
+    "backtest",
+    "capital",
+    "pdf",
+    "excel",
+    "verbose",
+    "confirm",
+]
+
+
+def _read_raw(prompt: str) -> tuple[Optional[str], str]:
+    hint = " [dim](Enter=default, b=back, c=cancel)[/dim]"
+    raw = console.input(f"{prompt}{hint}: ").strip()
+    low = raw.lower()
+    if low in ("b", "back"):
+        return None, "BACK"
+    if low in ("c", "cancel", "q", "quit"):
+        return None, "CANCEL"
+    return raw, "OK"
+
+
+def _ask_yes_no(prompt: str, default: bool = True):
+    marker = "Y/n" if default else "y/N"
+    while True:
+        raw, sig = _read_raw(f"{prompt} [{marker}]")
+        if sig != "OK":
+            return None, sig
+        if raw == "":
+            return default, "OK"
+        if raw is not None:
+            if raw.lower() in ("y", "yes"):
+                return True, "OK"
+            if raw.lower() in ("n", "no"):
+                return False, "OK"
+        console.print("[red]  Please answer y or n.[/red]")
+
+
+def _ask_choice(prompt: str, choices: list[str], default: Optional[str] = None):
+    choice_str = "/".join(choices)
+    while True:
+        raw, sig = _read_raw(
+            f"{prompt} ({choice_str})" + (f" [{default}]" if default else "")
+        )
+        if sig != "OK":
+            return None, sig
+        if raw == "" and default:
+            return default, "OK"
+        if raw is not None:
+            if raw.lower() in choices:
+                return raw.lower(), "OK"
+        console.print(f"[red]  Please choose one of: {choice_str}[/red]")
+
+
+def _ask_date(prompt: str, default: Optional[str] = None):
+    while True:
+        raw, sig = _read_raw(
+            f"{prompt} (YYYY-MM-DD)" + (f" [{default}]" if default else "")
+        )
+        if sig != "OK":
+            return None, sig
+        if raw == "" and default:
+            return default, "OK"
+        if raw == "" and not default:
+            return "", "OK"
+        if raw is None:
+            return None, "OK"
+        try:
+            d = datetime.strptime(raw, "%Y-%m-%d")
+        except ValueError:
+            console.print("[red]  Invalid date — use YYYY-MM-DD.[/red]")
+            continue
+        if d > datetime.today():
+            console.print("[red]  Date cannot be in the future.[/red]")
+            continue
+        return raw, "OK"
+
+
+def _ask_float(prompt: str, default: Optional[float] = None, minimum: float = 0.0):
+    while True:
+        raw, sig = _read_raw(
+            f"{prompt}" + (f" [{default}]" if default is not None else "")
+        )
+        if sig != "OK":
+            return None, sig
+        if raw == "" and default is not None:
+            return float(default), "OK"
+        if raw is None:
+            return None, "OK"
+        try:
+            v = float(raw)
+        except ValueError:
+            console.print("[red]  Please enter a number.[/red]")
+            continue
+        if v <= minimum:
+            console.print(f"[red]  Value must be greater than {minimum}.[/red]")
+            continue
+        return v, "OK"
+
+
+def _ask_tickers(default: Optional[str] = None):
+    while True:
+        raw, sig = _read_raw(
+            "Ticker symbols (comma-separated, e.g. AAPL,TSLA,NVDA)"
+            + (f" [{default}]" if default else "")
+        )
+        if sig != "OK":
+            return None, sig
+        if raw == "" and default:
+            raw = default
+        if raw is not None:
+            parts = [t.strip().upper() for t in raw.split(",") if t.strip()]
+            if not parts:
+                console.print("[red]  At least one ticker is required.[/red]")
+                continue
+            bad = [t for t in parts if not _TICKER_RE.match(t)]
+            if bad:
+                console.print(f"[red]  Invalid ticker format: {', '.join(bad)}[/red]")
+                continue
+            return ",".join(parts), "OK"
+
+
+def _ask_indicators(default_list: list[str]):
+    default_str = ",".join(default_list)
+    while True:
+        raw, sig = _read_raw(
+            f"Indicators (comma-separated: {', '.join(ALL_INDICATORS)}) [{default_str}]"
+        )
+        if sig != "OK":
+            return None, sig
+        if raw == "":
+            raw = default_str
+        if raw is not None:
+            parts = [i.strip().lower() for i in raw.split(",") if i.strip()]
+            unknown = [i for i in parts if i not in ALL_INDICATORS]
+            if not parts:
+                console.print("[red]  At least one indicator must be selected.[/red]")
+                continue
+            if unknown:
+                console.print(f"[red]  Unknown indicators: {', '.join(unknown)}[/red]")
+                continue
+            return parts, "OK"
+
+
+def _step_applicable(step_id: str, answers: dict) -> bool:
+    if step_id == "period":
+        return answers.get("date_mode") == "preset"
+    if step_id in ("start", "end"):
+        return answers.get("date_mode") == "custom"
+    if step_id == "indicators":
+        return answers.get("indicator_mode") == "select"
+    if step_id == "compare":
+        tickers = answers.get("tickers", "")
+        return len([t for t in tickers.split(",") if t.strip()]) > 1
+    if step_id == "capital":
+        return answers.get("backtest") is True
+    return True
+
+
+def _print_summary(answers: dict) -> None:
+    table = Table(title="Configuration Summary", show_header=False)
+    table.add_column("Field", style="cyan bold")
+    table.add_column("Value", style="white")
+    table.add_row("Tickers", answers.get("tickers", ""))
+    if answers.get("date_mode") == "preset":
+        table.add_row("Period", answers.get("period", ""))
+    else:
+        table.add_row("Start", answers.get("start", ""))
+        table.add_row("End", answers.get("end") or "today")
+    table.add_row(
+        "Indicators",
+        (
+            "All"
+            if answers.get("indicator_mode") == "all"
+            else ", ".join(answers.get("indicators", []))
+        ),
+    )
+    table.add_row("Compare", "Yes" if answers.get("compare") else "No")
+    table.add_row("Fundamentals", "Yes" if answers.get("fundamentals") else "No")
+    table.add_row("Statements", "Yes" if answers.get("statements") else "No")
+    table.add_row(
+        "Backtest",
+        f"Yes (${answers['capital']:,.0f})" if answers.get("backtest") else "No",
+    )
+    table.add_row("PDF Report", "Yes" if answers.get("pdf") else "No")
+    table.add_row("Excel Export", "Yes" if answers.get("excel") else "No")
+    table.add_row("Verbose", "Yes" if answers.get("verbose") else "No")
+    console.print()
+    console.print(table)
+    console.print()
+
+
+def _run_step(step_id: str, answers: dict, defaults: dict):
+    if step_id == "tickers":
+        return _ask_tickers(default=answers.get("tickers"))
+    if step_id == "date_mode":
+        val, sig = _ask_yes_no("Use a preset period?", default=True)
+        return (("preset" if val else "custom"), sig) if sig == "OK" else (val, sig)
+    if step_id == "period":
+        return _ask_choice(
+            "Period",
+            ["1m", "3m", "6m", "1y", "5y"],
+            default=defaults.get("period", "1y"),
+        )
+    if step_id == "start":
+        return _ask_date("Start date", default=answers.get("start"))
+    if step_id == "end":
+        return _ask_date("End date (blank = today)", default=answers.get("end") or "")
+    if step_id == "indicator_mode":
+        val, sig = _ask_yes_no("Use all indicators? (recommended)", default=True)
+        return (("all" if val else "select"), sig) if sig == "OK" else (val, sig)
+    if step_id == "indicators":
+        return _ask_indicators(defaults.get("indicators", ALL_INDICATORS))
+    if step_id == "compare":
+        return _ask_yes_no("Generate comparison chart?", default=False)
+    if step_id == "fundamentals":
+        return _ask_yes_no(
+            "Fetch fundamental data (P/E, market cap, ...)?", default=False
+        )
+    if step_id == "statements":
+        return _ask_yes_no(
+            "Fetch full financial statements (P&L, Balance Sheet, Cash Flow)?",
+            default=False,
+        )
+    if step_id == "backtest":
+        return _ask_yes_no("Run a signal-driven backtest?", default=False)
+    if step_id == "capital":
+        return _ask_float(
+            "Starting capital for backtest", default=10_000.0, minimum=0.0
+        )
+    if step_id == "pdf":
+        return _ask_yes_no("Generate PDF report?", default=True)
+    if step_id == "excel":
+        return _ask_yes_no("Generate Excel workbook?", default=True)
+    if step_id == "verbose":
+        return _ask_yes_no("Enable verbose / debug logging?", default=False)
+    if step_id == "confirm":
+        _print_summary(answers)
+        val, sig = _ask_yes_no("Proceed with analysis?", default=True)
+        if sig != "OK":
+            return val, sig
+        return (True, "OK") if val else (None, "BACK")
+    raise ValueError(f"Unknown step: {step_id}")
+
+
+def _build_kwargs(answers: dict, defaults: dict) -> dict:
+    return dict(
+        tickers=answers["tickers"],
+        start=answers.get("start") or None,
+        end=answers.get("end") or None,
+        period=answers.get("period") if answers.get("date_mode") == "preset" else None,
+        indicators=(
+            None
+            if answers.get("indicator_mode") == "all"
+            else answers.get("indicators")
+        ),
+        no_pdf=not answers.get("pdf", True),
+        no_excel=not answers.get("excel", True),
+        compare=answers.get("compare", False),
+        fundamentals=answers.get("fundamentals", False),
+        statements=answers.get("statements", False),
+        backtest=answers.get("backtest", False),
+        backtest_capital=answers.get("capital", 10_000.0),
+        verbose=answers.get("verbose", False),
+    )
+
+
+def run_interactive_wizard(defaults: dict) -> Optional[dict]:
+    """Guided step-by-step menu with full back/cancel support at every prompt."""
+    console.print()
+    console.rule("[bold cyan]📊  Stock Analysis Tool — Interactive Mode[/bold cyan]")
+    console.print(
+        "[dim]Press Enter to accept defaults · type 'b' to go back · 'c' to cancel[/dim]\n"
+    )
+
+    answers: dict = {}
+    idx = 0
+
+    while 0 <= idx < len(_STEP_ORDER):
+        step_id = _STEP_ORDER[idx]
+        if not _step_applicable(step_id, answers):
+            idx += 1
+            continue
+
+        result, sig = _run_step(step_id, answers, defaults)
+
+        if sig == "CANCEL":
+            console.print("\n[yellow]Cancelled — no analysis was run.[/yellow]")
+            return None
+
+        if sig == "BACK":
+            idx -= 1
+            while idx >= 0 and not _step_applicable(_STEP_ORDER[idx], answers):
+                idx -= 1
+            if idx < 0:
+                console.print("\n[yellow]Cancelled — no analysis was run.[/yellow]")
+                return None
+            continue
+
+        answers[step_id] = result
+        idx += 1
+
+    return _build_kwargs(answers, defaults)
+
+
 if __name__ == "__main__":
-    app()
+    if len(sys.argv) == 1:
+        # No flags provided — launch the guided interactive menu.
+        _cfg = _load_config()
+        _kwargs = run_interactive_wizard(_cfg.get("defaults", {}))
+        if _kwargs is not None:
+            analyze(**_kwargs)
+    else:
+        app()
