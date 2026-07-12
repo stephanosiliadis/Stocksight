@@ -52,6 +52,7 @@ from utils.fetchstockdata import fetch_stock_data
 from utils.generatepdfreport import generate_pdf_report
 from utils.generateplots import generate_plots
 from utils.savetoexcel import save_to_excel
+from utils.stats import compute_range_stats
 
 console = Console()
 
@@ -270,6 +271,7 @@ def analyze(
     fundamentals_data: dict = {}
     financial_statements_data: dict = {}
     backtest_results: dict = {}
+    range_stats: dict = {}
 
     for ticker in ticker_list:
         with console.status(f"[cyan]Processing {ticker}…[/cyan]"):
@@ -288,6 +290,9 @@ def analyze(
             # Trim warmup rows
             trimmed = full_analysis[full_analysis.index >= start_date].copy()
             analyzed_data[ticker] = trimmed
+
+            # Historical high/low range stats for the selected date range
+            range_stats[ticker] = compute_range_stats(trimmed)
 
             # Signals
             signals_data = None
@@ -355,6 +360,18 @@ def analyze(
                 output_dir=DATA_DIR,
             )
 
+            rs = range_stats.get(ticker)
+            if rs:
+                hd = rs.get("period_high_date")
+                ld = rs.get("period_low_date")
+                hd_str = hd.strftime("%Y-%m-%d") if hasattr(hd, "strftime") else str(hd)
+                ld_str = ld.strftime("%Y-%m-%d") if hasattr(ld, "strftime") else str(ld)
+                console.print(
+                    f"  [dim]Range [{ticker}]: "
+                    f"High ${rs['period_high']:.2f} ({hd_str})  |  "
+                    f"Low ${rs['period_low']:.2f} ({ld_str})[/dim]"
+                )
+
         console.print(f"  [green]✓[/green] {ticker} done")
 
     if not analyzed_data:
@@ -372,7 +389,7 @@ def analyze(
     # ── Excel export ──────────────────────────────────────────────────────────
     if not no_excel:
         excel_path = os.path.join(DATA_DIR, "stock_data.xlsx")
-        save_to_excel(analyzed_data, excel_path)
+        save_to_excel(analyzed_data, excel_path, range_stats=range_stats)
         console.print(f"  [green]✓[/green] Excel saved -> {excel_path}")
 
     # ── PDF report ────────────────────────────────────────────────────────────
@@ -386,6 +403,7 @@ def analyze(
             comparison_plot=comparison_path,
             financial_statements=financial_statements_data,
             backtest_results=backtest_results,
+            range_stats=range_stats,
             output_dir=DATA_DIR,
         )
         console.print(f"  [green]✓[/green] PDF saved -> {pdf_path}")

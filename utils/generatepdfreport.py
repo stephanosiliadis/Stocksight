@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from fpdf import FPDF
@@ -222,6 +223,27 @@ def _build_summary_rows(data: pd.DataFrame, indicators: list) -> list[tuple[str,
     return rows
 
 
+def _build_range_stats_rows(rs: dict) -> list[tuple[str, str]]:
+    """Return (label, value) pairs for the historical high/low range table."""
+    if not rs:
+        return []
+
+    hd = rs.get("period_high_date")
+    ld = rs.get("period_low_date")
+
+    hd_str = hd.strftime("%Y-%m-%d") if hd is not None else ""
+    ld_str = ld.strftime("%Y-%m-%d") if ld is not None else ""
+
+    return [
+        ("Period High", f"${rs['period_high']:.2f}"),
+        ("High Date", hd_str),
+        ("Period Low", f"${rs['period_low']:.2f}"),
+        ("Low Date", ld_str),
+        ("% From High", f"{rs['pct_from_high']:+.2f}%"),
+        ("% From Low", f"{rs['pct_from_low']:+.2f}%"),
+    ]
+
+
 def _build_fundamentals_rows(fund: dict) -> list[tuple[str, str]]:
     """Return a list of (label, value) pairs for the fundamentals table."""
 
@@ -413,7 +435,7 @@ def _draw_backtest_section(pdf: FPDF, bt: dict) -> None:
         return
 
     # ── KPI summary grid ──────────────────────────────────────────────────────
-    def _kpi_row(pairs: list[tuple[str, str, bool]]) -> None:
+    def _kpi_row(pairs: list[tuple[str, str, Optional[bool]]]) -> None:
         """Render a row of KPI cells. Each tuple: (label, value, is_positive)."""
         cell_w = 190.0 / len(pairs)
         for lbl, val, positive in pairs:
@@ -564,6 +586,7 @@ def generate_pdf_report(
     comparison_plot: str | None = None,
     financial_statements: dict | None = None,
     backtest_results: dict | None = None,
+    range_stats: dict | None = None,
     output_dir: str = "data",
 ) -> str:
     """
@@ -586,6 +609,8 @@ def generate_pdf_report(
         financial_statements = {}
     if backtest_results is None:
         backtest_results = {}
+    if range_stats is None:
+        range_stats = {}
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -664,6 +689,13 @@ def generate_pdf_report(
         if summary_rows:
             _draw_two_col_table(pdf, summary_rows)
         pdf.ln(4)
+
+        # ── Historical Range ──────────────────────────────────────────────────
+        rs = range_stats.get(ticker, {})
+        if rs:
+            _draw_section_header(pdf, "Historical Range")
+            _draw_two_col_table(pdf, _build_range_stats_rows(rs))
+            pdf.ln(4)
 
         # ── Fundamental Data ──────────────────────────────────────────────────
         fund = fundamentals_data.get(ticker, {})
