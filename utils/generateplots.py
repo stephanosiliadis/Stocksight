@@ -1,11 +1,11 @@
-import os
 import logging
+import os
 from typing import Any
 
 import matplotlib.pyplot as plt
 import mplfinance as mpf
-from matplotlib.lines import Line2D
 import pandas as pd
+from matplotlib.lines import Line2D
 
 log = logging.getLogger(__name__)
 

@@ -26,9 +26,7 @@ def _parse_iso_date(value: str, field: str) -> datetime:
         ) from exc
 
 
-def validate_tickers(
-    tickers: Iterable[str], ticker_re=None
-) -> list[str]:
+def validate_tickers(tickers: Iterable[str], ticker_re=None) -> list[str]:
     """Return the cleaned, deduped, upper-cased ticker list or raise.
 
     Args:
@@ -51,9 +49,7 @@ def validate_tickers(
         if not t:
             continue
         if not ticker_re.match(t):
-            raise ValidationError(
-                f"Invalid ticker format: '{raw}'."
-            )
+            raise ValidationError(f"Invalid ticker format: '{raw}'.")
         if t in seen:
             raise ValidationError(
                 f"Duplicate ticker: '{t}'. Remove duplicates before running."
@@ -83,9 +79,7 @@ def validate_period(
     p = period.strip().lower()
     if p not in period_map:
         valid = ", ".join(period_map.keys())
-        raise ValidationError(
-            f"Invalid --period '{period}'. Valid options: {valid}."
-        )
+        raise ValidationError(f"Invalid --period '{period}'. Valid options: {valid}.")
     return p
 
 
@@ -124,3 +118,51 @@ def validate_inputs(
     cleaned_period = validate_period(period, period_map=period_map)
     cleaned_start, cleaned_end = validate_date_range(start, end)
     return cleaned_tickers, cleaned_start, cleaned_end, cleaned_period
+
+
+def validate_indicators(
+    indicators: Optional[Iterable[str]], allowed: Iterable[str]
+) -> Optional[list[str]]:
+    """Validate a list of indicator keys against an allowed set.
+
+    Returns a list of lower-cased indicator keys, or ``None`` when the
+    caller passed ``None`` (meaning "use defaults"). Raises
+    ``ValidationError`` on unknown or empty selections.
+    """
+    if indicators is None:
+        return None
+
+    cleaned: list[str] = []
+    for it in indicators:
+        if it is None:
+            continue
+        key = str(it).strip().lower()
+        if not key:
+            continue
+        cleaned.append(key)
+
+    if not cleaned:
+        raise ValidationError("At least one indicator must be selected.")
+
+    allowed_set = {a.lower() for a in allowed}
+    unknown = [i for i in cleaned if i not in allowed_set]
+    if unknown:
+        raise ValidationError(f"Unknown indicators: {', '.join(unknown)}.")
+
+    return cleaned
+
+
+def validate_backtest_capital(capital: float) -> float:
+    """Ensure backtest starting capital is a positive number.
+
+    Raises ``ValidationError`` for non-positive values.
+    """
+    try:
+        val = float(capital)
+    except Exception as exc:
+        raise ValidationError("Backtest capital must be a number.") from exc
+
+    if val <= 0:
+        raise ValidationError("Backtest capital must be greater than 0.")
+
+    return val

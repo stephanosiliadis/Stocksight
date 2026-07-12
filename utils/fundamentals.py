@@ -1,4 +1,5 @@
 import logging
+
 import yfinance as yf
 
 log = logging.getLogger(__name__)

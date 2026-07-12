@@ -12,19 +12,16 @@ from dateutil.relativedelta import relativedelta
 from rich.console import Console
 from rich.table import Table
 
-from utils.analyzedata import analyze_data, ALL_INDICATORS
-from utils.cleandata import clean_data  # noqa: imported to satisfy package init
+from utils.analyzedata import ALL_INDICATORS, analyze_data
+from utils.cleandata import \
+    clean_data  # noqa: imported to satisfy package init
 from utils.fetchstockdata import fetch_stock_data
 from utils.generatepdfreport import generate_pdf_report
 from utils.generateplots import generate_plots
 from utils.savetoexcel import save_to_excel
 from utils.stats import compute_range_stats
-from utils.validators import (
-    ValidationError,
-    validate_inputs,
-    validate_period,
-    validate_tickers,
-)
+from utils.validators import (ValidationError, validate_backtest_capital,
+                              validate_indicators, validate_inputs)
 
 console = Console()
 
@@ -194,17 +191,16 @@ def analyze(
     except ValidationError as exc:
         console.print(f"[bold red]Input error: {exc}[/bold red]")
         raise typer.Exit(1)
-    if not indicators:
+    try:
+        validated_indicators = validate_indicators(indicators, ALL_INDICATORS)
+    except ValidationError as exc:
+        console.print(f"[bold red]Input error: {exc}[/bold red]")
+        raise typer.Exit(1)
+
+    if validated_indicators is None:
         active_indicators = defaults.get("indicators", ALL_INDICATORS)
     else:
-        active_indicators = [i.lower().strip() for i in indicators]
-        unknown = [i for i in active_indicators if i not in ALL_INDICATORS]
-        if unknown:
-            console.print(
-                f"[bold red]Unknown indicators: {', '.join(unknown)}[/bold red]\n"
-                f"Valid options: {', '.join(ALL_INDICATORS)}"
-            )
-            raise typer.Exit(1)
+        active_indicators = validated_indicators
 
     # Backtest requires signals; add it silently if missing
     if backtest and "signals" not in active_indicators:
@@ -213,6 +209,14 @@ def analyze(
             "adding it automatically.[/yellow]"
         )
         active_indicators = list(active_indicators) + ["signals"]
+
+    # Validate backtest capital
+    if backtest:
+        try:
+            backtest_capital = validate_backtest_capital(backtest_capital)
+        except ValidationError as exc:
+            console.print(f"[bold red]Input error: {exc}[/bold red]")
+            raise typer.Exit(1)
 
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
 
