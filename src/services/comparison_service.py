@@ -54,7 +54,7 @@ class ComparisonService:
             if first_price == 0:
                 continue
 
-            normalized_data[ticker] = (close / first_price) * 100
+            normalized_data[ticker] = (close.astype(float) / float(first_price)) * 100
 
         if not normalized_data:
             return None
