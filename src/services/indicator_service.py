@@ -16,7 +16,7 @@ class IndicatorService:
     appends the resulting values as additional columns to the input DataFrame.
     """
 
-    ALL_INDICATORS = [
+    _ALL_INDICATORS = [
         "bollinger",
         "rsi",
         "macd",
@@ -28,15 +28,15 @@ class IndicatorService:
     ]
 
     def __init__(self) -> None:
-        self.INDICATORS = {
-            "bollinger": self.calculate_bollinger,
-            "rsi": self.calculate_rsi,
-            "macd": self.calculate_macd,
-            "ema20": self.calculate_ema20,
-            "ema50": self.calculate_ema50,
-            "ema200": self.calculate_ema200,
-            "atr": self.calculate_atr,
-            "stochastic": self.calculate_stochastic,
+        self._INDICATORS = {
+            "bollinger": self._calculate_bollinger,
+            "rsi": self._calculate_rsi,
+            "macd": self._calculate_macd,
+            "ema20": self._calculate_ema20,
+            "ema50": self._calculate_ema50,
+            "ema200": self._calculate_ema200,
+            "atr": self._calculate_atr,
+            "stochastic": self._calculate_stochastic,
         }
 
     def serve_indicators(
@@ -57,10 +57,10 @@ class IndicatorService:
             return None
 
         if indicators is None:
-            indicators = self.ALL_INDICATORS
+            indicators = self._ALL_INDICATORS
 
         for indicator in indicators:
-            calculator = self.INDICATORS.get(indicator)
+            calculator = self._INDICATORS.get(indicator)
 
             if calculator:
                 try:
@@ -70,7 +70,7 @@ class IndicatorService:
 
         return data
 
-    def calculate_rsi(self, data: DataFrame) -> DataFrame:
+    def _calculate_rsi(self, data: DataFrame) -> DataFrame:
         """
         Calculate Relative Strength Index (RSI).
 
@@ -83,7 +83,7 @@ class IndicatorService:
         data["RSI"] = rsi(data["Close"], length=14)
         return data
 
-    def calculate_macd(self, data: DataFrame) -> DataFrame:
+    def _calculate_macd(self, data: DataFrame) -> DataFrame:
         """
         Calculate Moving Average Convergence Divergence (MACD).
 
@@ -102,28 +102,28 @@ class IndicatorService:
 
         return data
 
-    def calculate_ema20(self, data: DataFrame) -> DataFrame:
+    def _calculate_ema20(self, data: DataFrame) -> DataFrame:
         """
         Calculate the 20-period Exponential Moving Average.
         """
         data["EMA20"] = ema(data["Close"], length=20)
         return data
 
-    def calculate_ema50(self, data: DataFrame) -> DataFrame:
+    def _calculate_ema50(self, data: DataFrame) -> DataFrame:
         """
         Calculate the 50-period Exponential Moving Average.
         """
         data["EMA50"] = ema(data["Close"], length=50)
         return data
 
-    def calculate_ema200(self, data: DataFrame) -> DataFrame:
+    def _calculate_ema200(self, data: DataFrame) -> DataFrame:
         """
         Calculate the 200-period Exponential Moving Average.
         """
         data["EMA200"] = ema(data["Close"], length=200)
         return data
 
-    def calculate_bollinger(self, data: DataFrame) -> DataFrame:
+    def _calculate_bollinger(self, data: DataFrame) -> DataFrame:
         """
         Calculate Bollinger Bands.
 
@@ -138,7 +138,7 @@ class IndicatorService:
 
         return data
 
-    def calculate_atr(self, data: DataFrame) -> DataFrame:
+    def _calculate_atr(self, data: DataFrame) -> DataFrame:
         """
         Calculate Average True Range (ATR).
 
@@ -154,7 +154,7 @@ class IndicatorService:
 
         return data
 
-    def calculate_stochastic(self, data: DataFrame) -> DataFrame:
+    def _calculate_stochastic(self, data: DataFrame) -> DataFrame:
         """
         Calculate the Stochastic Oscillator.
 
