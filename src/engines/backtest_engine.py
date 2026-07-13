@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 
 # Import local packages.
+from src.models.signal import Signal, SignalType
 from src.models.trade import Trade
 
 
@@ -42,20 +43,22 @@ class BacktestEngine:
     def run(
         self,
         data: pd.DataFrame,
-        signals: pd.DataFrame,
+        signals: list[Signal],
     ) -> tuple[list[Trade], pd.DataFrame]:
         """
         Execute the backtest simulation.
 
         Args:
             data: Historical OHLCV market data indexed by date.
-            signals: DataFrame containing generated Buy and Sell signals.
+            signals: List of generated Buy/Sell signals for this ticker.
 
         Returns:
             A tuple containing:
                 - List of completed trades.
                 - Portfolio equity curve over time.
         """
+        signals_by_date = self._index_signals(signals)
+
         for raw_date, row in data.iterrows():
             date = pd.Timestamp(str(raw_date))
             close = row.get("Close")
@@ -64,19 +67,15 @@ class BacktestEngine:
                 continue
 
             close = float(close)
-            signal: pd.Series | None = None
-            if date in signals.index:
-                raw_signal = signals.loc[date]
-                if isinstance(raw_signal, pd.Series):
-                    signal = raw_signal
+            signal_type = signals_by_date.get(date.normalize())
 
-            if self._is_buy_signal(signal):
+            if signal_type is SignalType.BUY:
                 self._buy(
                     date,
                     close,
                 )
 
-            elif self._is_sell_signal(signal):
+            elif signal_type is SignalType.SELL:
                 self._sell(
                     date,
                     close,
@@ -91,6 +90,27 @@ class BacktestEngine:
             self.trades,
             self._create_equity_curve(),
         )
+
+    def _index_signals(
+        self,
+        signals: list[Signal],
+    ) -> dict[pd.Timestamp, SignalType]:
+        """
+        Build a date-indexed lookup of signal types for this ticker.
+
+        If multiple signals fall on the same date, the last one wins.
+
+        Args:
+            signals: List of generated Buy/Sell signals.
+
+        Returns:
+            Mapping of normalized date to signal type.
+        """
+        return {
+            pd.Timestamp(signal.date).normalize(): signal.signal_type
+            for signal in signals
+            if signal.ticker == self.ticker
+        }
 
     def _buy(
         self,
@@ -175,33 +195,3 @@ class BacktestEngine:
             },
             index=self.equity_dates,
         )
-
-    @staticmethod
-    def _is_buy_signal(
-        signal: pd.Series | None,
-    ) -> bool:
-        """
-        Determine whether a buy signal exists.
-
-        Args:
-            signal: Signal row containing Buy/Sell columns.
-
-        Returns:
-            True if a valid buy signal is present.
-        """
-        return signal is not None and pd.notna(signal.get("Buy"))
-
-    @staticmethod
-    def _is_sell_signal(
-        signal: pd.Series | None,
-    ) -> bool:
-        """
-        Determine whether a sell signal exists.
-
-        Args:
-            signal: Signal row containing Buy/Sell columns.
-
-        Returns:
-            True if a valid sell signal is present.
-        """
-        return signal is not None and pd.notna(signal.get("Sell"))

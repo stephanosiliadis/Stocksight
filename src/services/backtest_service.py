@@ -5,6 +5,7 @@ import pandas as pd
 # Import local packages.
 from src.engines.backtest_engine import BacktestEngine
 from src.models.backtest_result import BacktestResult
+from src.models.signal import Signal
 from src.models.trade import Trade
 
 
@@ -21,7 +22,7 @@ class BacktestService:
         self,
         ticker: str,
         data: pd.DataFrame,
-        signals: pd.DataFrame,
+        signals: list[Signal],
         initial_capital: float = 10_000.0,
     ) -> BacktestResult | None:
         """
@@ -75,7 +76,7 @@ class BacktestService:
     @staticmethod
     def _validate_input(
         data: pd.DataFrame,
-        signals: pd.DataFrame,
+        signals: list[Signal],
     ) -> bool:
         """
         Validate required backtest inputs.
@@ -83,12 +84,7 @@ class BacktestService:
         Returns:
             True if both datasets are valid, otherwise False.
         """
-        return (
-            data is not None
-            and not data.empty
-            and signals is not None
-            and not signals.empty
-        )
+        return data is not None and not data.empty and bool(signals)
 
     @staticmethod
     def _calculate_total_return(
