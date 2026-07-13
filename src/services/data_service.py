@@ -1,5 +1,5 @@
 # Import third party packages.
-import pandas as pd
+from pandas import DataFrame
 
 # Import local packages.
 from src.utils.data_fetcher import DataFetcher
@@ -23,7 +23,7 @@ class DataService:
 
     def serve_stock_data(
         self, ticker: str, start_date: str, end_date: str
-    ) -> pd.DataFrame | None:
+    ) -> DataFrame | None:
         """
         Fetch and clean historical stock data for a given ticker.
 
