@@ -3,11 +3,9 @@ import pandas as pd
 import yfinance as yf
 
 # Import local packages.
-from src.models.financial_statements import (
-    FinancialStatement,
-    FinancialStatementRow,
-    FinancialStatements,
-)
+from src.models.financial_statements import (FinancialStatement,
+                                             FinancialStatementRow,
+                                             FinancialStatements)
 
 
 class FinancialsService:

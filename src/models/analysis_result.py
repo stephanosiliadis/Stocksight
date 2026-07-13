@@ -4,10 +4,10 @@ from pydantic import BaseModel, ConfigDict
 
 # Import local packages.
 from src.models.backtest_result import BacktestResult
-from src.models.signal import Signal
-from src.models.statistics import Statistics
 from src.models.financial_statements import FinancialStatements
 from src.models.fundamentals import Fundamentals
+from src.models.signal import Signal
+from src.models.statistics import Statistics
 
 
 class AnalysisResult(BaseModel):

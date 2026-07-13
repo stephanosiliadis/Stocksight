@@ -1,9 +1,9 @@
 # Import third party packages.
 from pandas import DataFrame
 
+from src.utils.data_cleaner import DataCleaner
 # Import local packages.
 from src.utils.data_fetcher import DataFetcher
-from src.utils.data_cleaner import DataCleaner
 
 
 class DataService:
