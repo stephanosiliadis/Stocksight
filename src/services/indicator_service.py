@@ -16,7 +16,7 @@ class IndicatorService:
     appends the resulting values as additional columns to the input DataFrame.
     """
 
-    _ALL_INDICATORS = [
+    ALL_INDICATORS = [
         "bollinger",
         "rsi",
         "macd",
@@ -56,8 +56,10 @@ class IndicatorService:
         if data is None or data.empty:
             return None
 
+        data = data.copy()
+
         if indicators is None:
-            indicators = self._ALL_INDICATORS
+            indicators = self.ALL_INDICATORS
 
         for indicator in indicators:
             calculator = self._INDICATORS.get(indicator)
