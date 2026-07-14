@@ -15,9 +15,14 @@ from src.services.fundamentals_service import FundamentalsService
 from src.services.indicator_service import IndicatorService
 from src.services.signal_service import SignalService
 from src.services.statistics_service import StatisticsService
-from src.utils.validators import (ValidationError, validate_backtest_capital,
-                                  validate_date_range, validate_indicators,
-                                  validate_period, validate_tickers)
+from src.utils.validators import (
+    ValidationError,
+    validate_backtest_capital,
+    validate_date_range,
+    validate_indicators,
+    validate_period,
+    validate_tickers,
+)
 
 DEFAULT_INDICATORS = [
     "ema20",
@@ -159,6 +164,7 @@ class AnalysisService:
         return AnalysisResult(
             ticker=ticker,
             raw_data=visible_data,
+            active_indicators=request.indicators,
             indicators=visible_indicators,
             signals=signals,
             statistics=statistics,

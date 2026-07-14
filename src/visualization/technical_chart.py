@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Import local packages.
+from src.models.analysis_result import AnalysisResult
 from src.models.signal import Signal, SignalType
 from src.visualization.chart_theme import ChartTheme
 from src.visualization.indicator_plots import IndicatorPlots
@@ -26,36 +27,25 @@ class TechnicalChart:
 
     def __init__(
         self,
-        data: pd.DataFrame,
-        ticker: str,
-        indicators: list[str],
-        signals: list[Signal] | None = None,
+        result: AnalysisResult,
         support_levels: list[float] | None = None,
         resistance_levels: list[float] | None = None,
         show_volume: bool = True,
         theme: ChartTheme | None = None,
     ) -> None:
-        """
-        Args:
-            data: OHLCV data with calculated indicator columns.
-            ticker: Stock ticker symbol, used in the chart title.
-            indicators: Active technical indicator keys (e.g. "rsi", "macd").
-            signals: Buy/Sell signals to plot as markers on the candlestick
-                panel. Optional.
-            support_levels: Horizontal support levels to draw. Optional.
-            resistance_levels: Horizontal resistance levels to draw. Optional.
-            show_volume: Whether to include a Volume panel.
-            theme: Color palette. Defaults to a new ChartTheme().
-        """
-        self._data = data
-        self._ticker = ticker
-        self._indicators = indicators
-        self._signals = signals or []
+        self._result = result
+        self._data = result.indicators
+        self._ticker = result.ticker
+        self._indicators = result.active_indicators
+        self._signals = result.signals or []
         self._support_levels = support_levels or []
         self._resistance_levels = resistance_levels or []
         self._show_volume = show_volume
         self._theme = theme or ChartTheme()
-        self._indicator_plots = IndicatorPlots(data, self._theme)
+        self._indicator_plots = IndicatorPlots(
+            self._data,
+            self._theme,
+        )
         self._figure: go.Figure | None = None
 
     def build(self) -> go.Figure:

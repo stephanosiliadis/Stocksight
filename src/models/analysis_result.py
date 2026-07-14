@@ -29,6 +29,7 @@ class AnalysisResult(BaseModel):
 
     ticker: str
     raw_data: pd.DataFrame
+    active_indicators: list[str]
     indicators: pd.DataFrame
     signals: list[Signal]
     statistics: Statistics
