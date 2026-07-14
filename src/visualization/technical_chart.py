@@ -1,5 +1,4 @@
 # Import third party packages.
-import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -20,9 +19,11 @@ class TechnicalChart:
     Bollinger Bands / EMA overlays, buy/sell markers, and support/resistance
     lines), then optional Volume, MACD, and ATR rows below.
 
-    This class only builds and returns a go.Figure -- it does not render to
-    Streamlit or disk. Callers can pass the figure to st.plotly_chart(fig),
-    or call save()/to_html() on this class for exports.
+    This class only builds and exports Plotly figures.
+
+    It does not render to Streamlit or interact with the filesystem.
+    The returned figure can be displayed with st.plotly_chart(), while
+    export_image() provides binary image data for download buttons.
     """
 
     def __init__(
@@ -91,46 +92,31 @@ class TechnicalChart:
         self._figure = fig
         return fig
 
-    def save(self, output_path: str) -> str:
+    def export_image(
+        self,
+        format: str = "png",
+    ) -> bytes:
         """
-        Save the built figure to disk.
-
-        Uses write_html() for ".html" paths (no extra dependencies), and
-        write_image() otherwise (requires the "kaleido" package).
+        Export the built chart as image bytes.
 
         Args:
-            output_path: Destination file path.
+            format:
+                Image format supported by Plotly/Kaleido.
+                Common values are "png", "jpeg", "svg", and "webp".
 
         Returns:
-            The output path, for convenience.
+            Binary image data.
 
         Raises:
-            RuntimeError: If build() has not been called yet.
+            RuntimeError:
+                If build() has not been called yet.
         """
         if self._figure is None:
-            raise RuntimeError("Call build() before save().")
+            raise RuntimeError("Call build() before exporting.")
 
-        if output_path.endswith(".html"):
-            self._figure.write_html(output_path)
-        else:
-            self._figure.write_image(output_path)
-
-        return output_path
-
-    def to_html(self) -> str:
-        """
-        Render the built figure as a standalone HTML string.
-
-        Returns:
-            HTML markup for the chart.
-
-        Raises:
-            RuntimeError: If build() has not been called yet.
-        """
-        if self._figure is None:
-            raise RuntimeError("Call build() before to_html().")
-
-        return self._figure.to_html(include_plotlyjs="cdn")
+        return self._figure.to_image(
+            format=format,
+        )
 
     def _plan_layout(self) -> list[tuple[str, float]]:
         """

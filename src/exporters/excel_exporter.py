@@ -1,5 +1,5 @@
 # Import standard library packages.
-import os
+from io import BytesIO
 
 # Import third party packages.
 import pandas as pd
@@ -9,32 +9,35 @@ from src.models.analysis_result import AnalysisResult
 from src.models.financial_statements import FinancialStatement
 from src.models.signal import Signal
 
-OUTPUT_DIR = "outputs/excels"
-
 
 class ExcelExporter:
     """
-    Exports a single AnalysisResult to a multi-sheet Excel workbook.
+    Exports an AnalysisResult into an Excel workbook.
 
-    Each section of AnalysisResult (statistics, raw data, indicators,
-    signals, fundamentals, financial statements, backtest results) is
-    written to its own sheet, only when that data is present.
+    The generated workbook is returned as bytes so it can be directly
+    downloaded by a frontend (e.g. Streamlit) without requiring temporary
+    files on disk.
     """
 
-    def export_excel(self, result: AnalysisResult) -> str:
+    def export_excel(
+        self,
+        result: AnalysisResult,
+    ) -> bytes:
         """
-        Write an AnalysisResult to an Excel file.
+        Convert an AnalysisResult into an Excel workbook.
 
         Args:
-            result: The analysis result to export.
+            result: Complete analysis output to export.
 
         Returns:
-            The path of the written Excel file.
+            Excel workbook content as bytes.
         """
-        file_path = self._build_file_path(result.ticker)
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        buffer = BytesIO()
 
-        with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+        with pd.ExcelWriter(
+            buffer,
+            engine="openpyxl",
+        ) as writer:
             self._write_summary_sheet(writer, result)
             self._write_raw_data_sheet(writer, result)
             self._write_indicators_sheet(writer, result)
@@ -43,23 +46,25 @@ class ExcelExporter:
             self._write_financial_statement_sheets(writer, result)
             self._write_backtest_sheets(writer, result)
 
-        return file_path
+        buffer.seek(0)
 
-    def _build_file_path(self, ticker: str) -> str:
-        """Build the destination path for a ticker's workbook."""
-        return os.path.join(OUTPUT_DIR, f"{ticker}_analysis.xlsx")
+        return buffer.getvalue()
 
     def _write_summary_sheet(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write period high/low and current price stats to a Summary sheet."""
+        """
+        Write general analysis information and price statistics.
+        """
         stats = result.statistics
+
         summary = pd.DataFrame(
             [
                 {
                     "Ticker": result.ticker,
+                    "Active Indicators": ", ".join(result.active_indicators),
                     "Period High": stats.period_high,
                     "High Date": stats.period_high_date,
                     "Period Low": stats.period_low,
@@ -70,41 +75,69 @@ class ExcelExporter:
                 }
             ]
         )
-        summary.to_excel(writer, sheet_name="Summary", index=False)
+
+        summary.to_excel(
+            writer,
+            sheet_name="Summary",
+            index=False,
+        )
 
     def _write_raw_data_sheet(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write the raw OHLCV data to its own sheet."""
-        result.raw_data.to_excel(writer, sheet_name="Raw Data")
+        """
+        Write raw OHLCV market data.
+        """
+        result.raw_data.to_excel(
+            writer,
+            sheet_name="Raw Data",
+        )
 
     def _write_indicators_sheet(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write OHLCV + calculated indicator columns to their own sheet."""
-        result.indicators.to_excel(writer, sheet_name="Indicators")
+        """
+        Write OHLCV data with calculated indicators.
+        """
+        result.indicators.to_excel(
+            writer,
+            sheet_name="Indicators",
+        )
 
     def _write_signals_sheet(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write detected trading signals to their own sheet, if any exist."""
+        """
+        Write generated trading signals.
+        """
         if not result.signals:
             return
 
-        signals_df = self._signals_to_frame(result.signals)
-        signals_df.to_excel(writer, sheet_name="Signals", index=False)
+        signals_df = self._signals_to_dataframe(result.signals)
 
-    def _signals_to_frame(self, signals: list[Signal]) -> pd.DataFrame:
-        """Convert a list of Signal models into a flat DataFrame."""
+        signals_df.to_excel(
+            writer,
+            sheet_name="Signals",
+            index=False,
+        )
+
+    def _signals_to_dataframe(
+        self,
+        signals: list[Signal],
+    ) -> pd.DataFrame:
+        """
+        Convert Signal models into a tabular representation.
+        """
         return pd.DataFrame(
             [
                 {
+                    "Ticker": signal.ticker,
                     "Date": signal.date,
                     "Type": signal.signal_type.value,
                     "Price": signal.price,
@@ -119,26 +152,50 @@ class ExcelExporter:
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write company fundamentals to their own sheet, if requested."""
+        """
+        Write company fundamental information.
+        """
         if result.fundamentals is None:
             return
 
         fundamentals_df = pd.DataFrame([result.fundamentals.model_dump()])
-        fundamentals_df.to_excel(writer, sheet_name="Fundamentals", index=False)
+
+        fundamentals_df.to_excel(
+            writer,
+            sheet_name="Fundamentals",
+            index=False,
+        )
 
     def _write_financial_statement_sheets(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write income statement, balance sheet, and cash flow, if requested."""
+        """
+        Write financial statements if available.
+        """
         statements = result.financial_statements
+
         if statements is None:
             return
 
-        self._write_statement(writer, "Income Statement", statements.income_statement)
-        self._write_statement(writer, "Balance Sheet", statements.balance_sheet)
-        self._write_statement(writer, "Cash Flow", statements.cash_flow_statement)
+        self._write_statement(
+            writer,
+            "Income Statement",
+            statements.income_statement,
+        )
+
+        self._write_statement(
+            writer,
+            "Balance Sheet",
+            statements.balance_sheet,
+        )
+
+        self._write_statement(
+            writer,
+            "Cash Flow",
+            statements.cash_flow_statement,
+        )
 
     def _write_statement(
         self,
@@ -146,7 +203,9 @@ class ExcelExporter:
         sheet_name: str,
         statement: FinancialStatement | None,
     ) -> None:
-        """Write a single FinancialStatement to a sheet, if it has data."""
+        """
+        Write a single financial statement.
+        """
         if statement is None:
             return
 
@@ -155,24 +214,48 @@ class ExcelExporter:
             index=[row.label for row in statement.rows],
             columns=statement.periods,
         )
-        statement_df.to_excel(writer, sheet_name=sheet_name)
+
+        statement_df.to_excel(
+            writer,
+            sheet_name=sheet_name,
+        )
 
     def _write_backtest_sheets(
         self,
         writer: pd.ExcelWriter,
         result: AnalysisResult,
     ) -> None:
-        """Write backtest metrics, trades, and equity curve, if requested."""
+        """
+        Write backtesting results.
+        """
         backtest = result.backtest_result
+
         if backtest is None:
             return
 
-        self._write_backtest_summary(writer, backtest)
-        self._write_backtest_trades(writer, backtest)
-        backtest.equity_curve.to_excel(writer, sheet_name="Equity Curve")
+        self._write_backtest_summary(
+            writer,
+            backtest,
+        )
 
-    def _write_backtest_summary(self, writer: pd.ExcelWriter, backtest) -> None:
-        """Write top-line backtest metrics to a summary sheet."""
+        self._write_backtest_trades(
+            writer,
+            backtest,
+        )
+
+        backtest.equity_curve.to_excel(
+            writer,
+            sheet_name="Equity Curve",
+        )
+
+    def _write_backtest_summary(
+        self,
+        writer: pd.ExcelWriter,
+        backtest,
+    ) -> None:
+        """
+        Write backtest performance metrics.
+        """
         summary = pd.DataFrame(
             [
                 {
@@ -181,16 +264,32 @@ class ExcelExporter:
                     "Sharpe Ratio": backtest.sharpe_ratio,
                     "Max Drawdown %": backtest.max_drawdown,
                     "Win Rate %": backtest.win_rate,
-                    "# Trades": backtest.num_trades,
+                    "Number of Trades": backtest.num_trades,
                 }
             ]
         )
-        summary.to_excel(writer, sheet_name="Backtest Summary", index=False)
 
-    def _write_backtest_trades(self, writer: pd.ExcelWriter, backtest) -> None:
-        """Write the list of completed trades to their own sheet, if any."""
+        summary.to_excel(
+            writer,
+            sheet_name="Backtest Summary",
+            index=False,
+        )
+
+    def _write_backtest_trades(
+        self,
+        writer: pd.ExcelWriter,
+        backtest,
+    ) -> None:
+        """
+        Write completed trades.
+        """
         if not backtest.trades:
             return
 
         trades_df = pd.DataFrame([trade.model_dump() for trade in backtest.trades])
-        trades_df.to_excel(writer, sheet_name="Trades", index=False)
+
+        trades_df.to_excel(
+            writer,
+            sheet_name="Trades",
+            index=False,
+        )
