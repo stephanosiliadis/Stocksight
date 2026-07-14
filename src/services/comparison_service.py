@@ -1,8 +1,9 @@
 # Import third party packages.
 import pandas as pd
+import plotly.graph_objects as go
 
 # Import local packages.
-from src.visualization.comparison_chart import create_comparison_chart
+from src.visualization.comparison_chart import ComparisonChart
 
 
 class ComparisonService:
@@ -10,16 +11,15 @@ class ComparisonService:
     Provides functionality for comparing historical performance between
     multiple stock tickers.
 
-    This service normalizes closing prices and delegates chart creation to the
-    visualization layer.
+    This service normalizes closing prices and delegates chart creation to
+    the visualization layer.
     """
 
     def serve_comparison(
         self,
         analyzed_data: dict[str, pd.DataFrame],
         tickers: list[str],
-        output_dir: str = "data",
-    ) -> str | None:
+    ) -> go.Figure | None:
         """
         Generate a normalized performance comparison chart.
 
@@ -27,11 +27,11 @@ class ComparisonService:
             analyzed_data: Dictionary mapping ticker symbols to historical
                 OHLCV DataFrames.
             tickers: List of ticker symbols to compare.
-            output_dir: Directory where the chart will be saved.
 
         Returns:
-            Path to the generated comparison chart, or None if no valid
-            tickers are available.
+            The comparison chart figure, or None if no valid tickers are
+            available. Callers can pass this to st.plotly_chart(fig), or
+            call .save()/.to_html() on it for exports.
         """
         normalized_data = {}
 
@@ -59,7 +59,4 @@ class ComparisonService:
         if not normalized_data:
             return None
 
-        return create_comparison_chart(
-            normalized_data,
-            output_dir,
-        )
+        return ComparisonChart(normalized_data).build()

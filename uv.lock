@@ -1387,19 +1387,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rich"
-version = "14.3.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "markdown-it-py" },
-    { name = "pygments" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/c6/f3b320c27991c46f43ee9d856302c70dc2d0fb2dba4842ff739d5f46b393/rich-14.3.3.tar.gz", hash = "sha256:b8daa0b9e4eef54dd8cf7c86c03713f53241884e814f4e2f5fb342fe520f639b", size = 230582, upload-time = "2026-02-19T17:23:12.474Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/25/b208c5683343959b670dc001595f2f3737e051da617f66c31f7c4fa93abc/rich-14.3.3-py3-none-any.whl", hash = "sha256:793431c1f8619afa7d3b52b2cdec859562b950ea0d4b6b505397612db8d5362d", size = 310458, upload-time = "2026-02-19T17:23:13.732Z" },
-]
-
-[[package]]
 name = "rpds-py"
 version = "2026.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1589,14 +1576,12 @@ dependencies = [
     { name = "pywin32-ctypes" },
     { name = "pyyaml" },
     { name = "requests" },
-    { name = "rich" },
     { name = "setuptools" },
     { name = "shellingham" },
     { name = "six" },
     { name = "soupsieve" },
     { name = "streamlit" },
     { name = "tqdm" },
-    { name = "typer" },
     { name = "typing-extensions" },
     { name = "tzdata" },
     { name = "urllib3" },
@@ -1653,14 +1638,12 @@ requires-dist = [
     { name = "pywin32-ctypes", specifier = "==0.2.3" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "requests", specifier = "==2.32.5" },
-    { name = "rich", specifier = "==14.3.3" },
     { name = "setuptools", specifier = "==82.0.1" },
     { name = "shellingham", specifier = "==1.5.4" },
     { name = "six", specifier = "==1.17.0" },
     { name = "soupsieve", specifier = "==2.8.3" },
     { name = "streamlit", specifier = ">=1.59.1" },
     { name = "tqdm", specifier = "==4.67.3" },
-    { name = "typer", specifier = "==0.24.1" },
     { name = "typing-extensions", specifier = "==4.15.0" },
     { name = "tzdata", specifier = "==2025.3" },
     { name = "urllib3", specifier = "==2.6.3" },
@@ -1740,21 +1723,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/57/a9/a2584b8313b89f94869ddb3c4074617a691de1812a614d2d50e32ca5a7a6/traitlets-5.15.1.tar.gz", hash = "sha256:7b1c07854fe25acb39e009bae49f11b79ff6cbb2f27999104e9110e7a6b53722", size = 163344, upload-time = "2026-06-03T12:26:06.181Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/8d/1080ee4c231f361b6ce4470d556c8c435b67c7e0753aaa641497ee92f88b/traitlets-5.15.1-py3-none-any.whl", hash = "sha256:770a53705f84b81ac107e83a1b3328ff2dae16094d8fc3cfc004e4b22dfd8e92", size = 85858, upload-time = "2026-06-03T12:26:04.395Z" },
-]
-
-[[package]]
-name = "typer"
-version = "0.24.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "annotated-doc" },
-    { name = "click" },
-    { name = "rich" },
-    { name = "shellingham" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/24/cb09efec5cc954f7f9b930bf8279447d24618bb6758d4f6adf2574c41780/typer-0.24.1.tar.gz", hash = "sha256:e39b4732d65fbdcde189ae76cf7cd48aeae72919dea1fdfc16593be016256b45", size = 118613, upload-time = "2026-02-21T16:54:40.609Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/91/48db081e7a63bb37284f9fbcefda7c44c277b18b0e13fbc36ea2335b71e6/typer-0.24.1-py3-none-any.whl", hash = "sha256:112c1f0ce578bfb4cab9ffdabc68f031416ebcc216536611ba21f04e9aa84c9e", size = 56085, upload-time = "2026-02-21T16:54:41.616Z" },
 ]
 
 [[package]]
