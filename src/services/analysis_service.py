@@ -15,9 +15,14 @@ from src.services.fundamentals_service import FundamentalsService
 from src.services.indicator_service import IndicatorService
 from src.services.signal_service import SignalService
 from src.services.statistics_service import StatisticsService
-from src.utils.validators import (ValidationError, validate_backtest_capital,
-                                  validate_date_range, validate_indicators,
-                                  validate_period, validate_tickers)
+from src.utils.validators import (
+    ValidationError,
+    validate_backtest_capital,
+    validate_date_range,
+    validate_indicators,
+    validate_period,
+    validate_tickers,
+)
 
 DEFAULT_INDICATORS = [
     "ema20",
@@ -128,9 +133,13 @@ class AnalysisService:
             indicators,
             ticker,
         )
-        visible_data = raw_data.loc[raw_data.index >= pd.Timestamp(start_date)]
+        cutoff = self._as_comparable_timestamp(start_date, raw_data.index)
+        visible_data = raw_data.loc[raw_data.index >= cutoff]
+        indicator_cutoff = self._as_comparable_timestamp(
+            start_date, indicator_data.index
+        )
         visible_indicators = indicator_data.loc[
-            indicator_data.index >= pd.Timestamp(start_date)
+            indicator_data.index >= indicator_cutoff
         ]
         statistics = self.statistics_service.serve_statistics(visible_data)
 
@@ -159,7 +168,7 @@ class AnalysisService:
         return AnalysisResult(
             ticker=ticker,
             raw_data=visible_data,
-            active_indicators=request.indicators,
+            active_indicators=indicators,
             indicators=visible_indicators,
             signals=signals,
             statistics=statistics,
@@ -167,6 +176,28 @@ class AnalysisService:
             financial_statements=financial_statements,
             backtest_result=backtest_result,
         )
+
+    def _as_comparable_timestamp(
+        self,
+        cutoff_date: date,
+        index: pd.Index,
+    ) -> pd.Timestamp:
+        """
+        Build a cutoff Timestamp matching the tz-awareness of a DataFrame's
+        index, so `index >= cutoff` filters reliably regardless of whether
+        the source data (e.g. yfinance) returned a tz-naive or tz-aware
+        DatetimeIndex.
+        """
+        cutoff = pd.Timestamp(cutoff_date)
+        index_tz = getattr(index, "tz", None)
+
+        if index_tz is not None and cutoff.tz is None:
+            return cutoff.tz_localize(index_tz)
+
+        if index_tz is None and cutoff.tz is not None:
+            return cutoff.tz_localize(None)
+
+        return cutoff
 
     def _resolve_dates(
         self,
