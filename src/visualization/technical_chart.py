@@ -1,4 +1,5 @@
 # Import third party packages.
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -13,40 +14,47 @@ class TechnicalChart:
     """
     Builds a multi-panel technical analysis chart as a single Plotly figure.
 
-    Only panels for currently active indicators are created (mirroring the
-    old dynamic mplfinance layout): an optional oscillator row (RSI and/or
-    Stochastic) on top, the candlestick panel (always present, with
-    Bollinger Bands / EMA overlays, buy/sell markers, and support/resistance
-    lines), then optional Volume, MACD, and ATR rows below.
+    Only panels for currently active indicators are created: an optional
+    oscillator row (RSI and/or Stochastic) on top, the candlestick panel
+    (always present, with Bollinger Bands / EMA overlays, buy/sell markers,
+    and support/resistance lines), then optional Volume, MACD, and ATR rows
+    below.
 
-    This class only builds and exports Plotly figures.
-
-    It does not render to Streamlit or interact with the filesystem.
-    The returned figure can be displayed with st.plotly_chart(), while
-    export_image() provides binary image data for download buttons.
+    This class only builds and returns a go.Figure -- it does not render to
+    Streamlit or disk. Callers can pass the figure to st.plotly_chart(fig),
+    or call save()/to_html() on this class for exports.
     """
 
     def __init__(
         self,
         result: AnalysisResult,
+        show_signals: bool = True,
         support_levels: list[float] | None = None,
         resistance_levels: list[float] | None = None,
         show_volume: bool = True,
         theme: ChartTheme | None = None,
     ) -> None:
-        self._result = result
+        """
+        Args:
+            result: The analysis result to chart. Supplies the indicator
+                data, ticker, active indicator list, and signals.
+            show_signals: Whether to plot buy/sell markers. Signals can
+                crowd the chart and obscure candle values, so callers can
+                let the user toggle this off.
+            support_levels: Horizontal support levels to draw. Optional.
+            resistance_levels: Horizontal resistance levels to draw. Optional.
+            show_volume: Whether to include a Volume panel.
+            theme: Color palette. Defaults to a new ChartTheme().
+        """
         self._data = result.indicators
         self._ticker = result.ticker
         self._indicators = result.active_indicators
-        self._signals = result.signals or []
+        self._signals = result.signals if show_signals else []
         self._support_levels = support_levels or []
         self._resistance_levels = resistance_levels or []
         self._show_volume = show_volume
         self._theme = theme or ChartTheme()
-        self._indicator_plots = IndicatorPlots(
-            self._data,
-            self._theme,
-        )
+        self._indicator_plots = IndicatorPlots(self._data, self._theme)
         self._figure: go.Figure | None = None
 
     def build(self) -> go.Figure:
@@ -92,31 +100,46 @@ class TechnicalChart:
         self._figure = fig
         return fig
 
-    def export_image(
-        self,
-        format: str = "png",
-    ) -> bytes:
+    def save(self, output_path: str) -> str:
         """
-        Export the built chart as image bytes.
+        Save the built figure to disk.
+
+        Uses write_html() for ".html" paths (no extra dependencies), and
+        write_image() otherwise (requires the "kaleido" package).
 
         Args:
-            format:
-                Image format supported by Plotly/Kaleido.
-                Common values are "png", "jpeg", "svg", and "webp".
+            output_path: Destination file path.
 
         Returns:
-            Binary image data.
+            The output path, for convenience.
 
         Raises:
-            RuntimeError:
-                If build() has not been called yet.
+            RuntimeError: If build() has not been called yet.
         """
         if self._figure is None:
-            raise RuntimeError("Call build() before exporting.")
+            raise RuntimeError("Call build() before save().")
 
-        return self._figure.to_image(
-            format=format,
-        )
+        if output_path.endswith(".html"):
+            self._figure.write_html(output_path)
+        else:
+            self._figure.write_image(output_path)
+
+        return output_path
+
+    def to_html(self) -> str:
+        """
+        Render the built figure as a standalone HTML string.
+
+        Returns:
+            HTML markup for the chart.
+
+        Raises:
+            RuntimeError: If build() has not been called yet.
+        """
+        if self._figure is None:
+            raise RuntimeError("Call build() before to_html().")
+
+        return self._figure.to_html(include_plotlyjs="cdn")
 
     def _plan_layout(self) -> list[tuple[str, float]]:
         """
@@ -215,35 +238,6 @@ class TechnicalChart:
             col=1,
         )
 
-    def _add_hline(
-        self,
-        fig: go.Figure,
-        row: int,
-        y: float,
-        color: str,
-        dash: str = "dash",
-        opacity: float = 0.9,
-    ) -> None:
-        """
-        Draw a horizontal threshold line on a specific panel row.
-
-        Uses fig.add_shape() with explicit axis references instead of
-        fig.add_hline(row=..., col=...), which raises a TypeError on some
-        Plotly versions when used together with make_subplots.
-        """
-        axis_suffix = "" if row == 1 else str(row)
-        fig.add_shape(
-            type="line",
-            xref=f"x{axis_suffix} domain",
-            yref=f"y{axis_suffix}",
-            x0=0,
-            x1=1,
-            y0=y,
-            y1=y,
-            line=dict(color=color, dash=dash, width=1),
-            opacity=opacity,
-        )
-
     def _add_signal_markers(self, fig: go.Figure, row: int) -> None:
         """Add buy/sell signal scatter markers onto the candlestick panel."""
         buys = [s for s in self._signals if s.signal_type is SignalType.BUY]
@@ -275,7 +269,12 @@ class TechnicalChart:
                 y=[s.price for s in signals],
                 name=label,
                 mode="markers",
-                marker=dict(symbol=symbol, size=11, color=color),
+                marker=dict(
+                    symbol=symbol,
+                    size=11,
+                    color=color,
+                    line=dict(width=1, color="white"),
+                ),
                 text=[s.reason for s in signals],
                 hovertemplate="%{text}<br>%{x}<br>$%{y:.2f}<extra></extra>",
             ),
@@ -286,13 +285,23 @@ class TechnicalChart:
     def _add_support_resistance(self, fig: go.Figure, row: int) -> None:
         """Draw horizontal support and resistance lines on the candlestick panel."""
         for level in self._support_levels:
-            self._add_hline(
-                fig, row, y=level, color=self._theme.lime, dash="dot", opacity=0.75
+            fig.add_hline(
+                y=level,
+                row=row,
+                col=1,
+                line_dash="dot",
+                line_color=self._theme.lime,
+                opacity=0.75,
             )
 
         for level in self._resistance_levels:
-            self._add_hline(
-                fig, row, y=level, color=self._theme.tomato, dash="dot", opacity=0.75
+            fig.add_hline(
+                y=level,
+                row=row,
+                col=1,
+                line_dash="dot",
+                line_color=self._theme.tomato,
+                opacity=0.75,
             )
 
     def _add_oscillator_panel(self, fig: go.Figure, row: int) -> None:
@@ -306,18 +315,28 @@ class TechnicalChart:
             self._add_traces(fig, row, self._indicator_plots.build_stochastic_traces())
 
         oversold, overbought = (30, 70) if has_rsi else (20, 80)
-        self._add_hline(
-            fig, row, y=oversold, color=self._theme.lime, dash="dash", opacity=0.9
+        fig.add_hline(
+            y=oversold,
+            row=row,
+            col=1,
+            line_dash="dash",
+            line_color=self._theme.lime,
+            opacity=0.9,
         )
-        self._add_hline(
-            fig, row, y=overbought, color=self._theme.tomato, dash="dash", opacity=0.9
+        fig.add_hline(
+            y=overbought,
+            row=row,
+            col=1,
+            line_dash="dash",
+            line_color=self._theme.tomato,
+            opacity=0.9,
         )
         fig.update_yaxes(range=[0, 100], row=row, col=1)
 
     def _add_macd_panel(self, fig: go.Figure, row: int) -> None:
         """Add MACD traces and the zero line to the MACD panel."""
         self._add_traces(fig, row, self._indicator_plots.build_macd_traces())
-        self._add_hline(fig, row, y=0, color="gray", dash="solid", opacity=0.5)
+        fig.add_hline(y=0, row=row, col=1, line_color="gray", opacity=0.5)
 
     def _add_traces(self, fig: go.Figure, row: int, traces: list) -> None:
         """Add a batch of pre-built traces onto a given panel row."""
@@ -329,8 +348,11 @@ class TechnicalChart:
         fig.update_layout(
             title=f"{self._ticker} — Technical Analysis",
             template="plotly_white",
-            height=max(600, 250 + panel_count * 180),
+            height=max(650, 300 + panel_count * 200),
             showlegend=True,
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
             hovermode="x unified",
-            margin=dict(t=60, b=30, l=50, r=30),
+            margin=dict(t=70, b=30, l=50, r=30),
         )

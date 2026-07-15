@@ -14,6 +14,7 @@ from src.components.indicator_selector import render_indicator_selector
 from src.components.metrics_cards import render_metrics_cards
 from src.components.ticker_input import render_ticker_input
 from src.models.analysis_request import AnalysisRequest
+from src.models.analysis_result import AnalysisResult
 from src.models.financial_statements import FinancialStatements
 from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService
@@ -66,20 +67,25 @@ def _save_cached_tickers(tickers: list[str]) -> None:
     )
 
 
-def _statistics_to_metrics(stats: Statistics) -> dict[str, str]:
+def _statistics_to_metrics(stats: Statistics) -> tuple[dict[str, str], dict[str, str]]:
     """
-    Flatten a Statistics model into the dict shape render_metrics_cards
-    expects.
+    Flatten a Statistics model into the (metrics, deltas) shapes
+    render_metrics_cards expects. Dates are passed as deltas (small font)
+    instead of being appended to the value, since a full date string
+    overflows/clips in st.metric's large value font.
     """
-    return {
+    metrics = {
         "Current Close": f"${stats.current_close:,.2f}",
         "Period High": f"${stats.period_high:,.2f}",
-        "High Date": stats.period_high_date.isoformat(),
         "Period Low": f"${stats.period_low:,.2f}",
-        "Low Date": stats.period_low_date.isoformat(),
         "% From High": f"{stats.pct_from_high:.2f}%",
         "% From Low": f"{stats.pct_from_low:.2f}%",
     }
+    deltas = {
+        "Period High": stats.period_high_date.isoformat(),
+        "Period Low": stats.period_low_date.isoformat(),
+    }
+    return metrics, deltas
 
 
 def _statements_to_dataframes(
@@ -141,113 +147,184 @@ def _build_request(
     )
 
 
-def show() -> None:
+def _render_sidebar_controls() -> tuple[list[str], list[str], dict, bool, bool]:
     """
-    Render the Stock Analysis page.
+    Render every input control in the sidebar, so the main area is left
+    free for charts and results.
+
+    Returns:
+        Tuple of (tickers, indicators, period_info, show_signals,
+        run_analysis).
     """
-    st.title("Stock Analysis")
+    with st.sidebar:
+        st.header("Controls")
 
-    # Hydrate the working set from disk on first visit so the user does
-    # not lose their tickers when navigating between pages.
-    if "selected_tickers" not in st.session_state:
-        st.session_state.selected_tickers = _load_cached_tickers()
+        tickers = render_ticker_input()
+        _save_cached_tickers(tickers)
 
-    tickers = render_ticker_input()
-    _save_cached_tickers(tickers)
-
-    if not tickers:
-        st.info("Add a ticker above to begin analysis.")
-        return
-
-    chart_column, control_column = st.columns([3, 1])
-
-    with control_column:
+        st.divider()
         indicators = render_indicator_selector()
+
+        st.divider()
         period_info = render_date_selector()
+
+        st.divider()
+        show_signals = st.checkbox(
+            "Show buy/sell signals",
+            value=True,
+            help="Turn off if signal markers are crowding the chart.",
+        )
+
+        st.divider()
         run_analysis = st.button(
             "Analyze",
             type="primary",
             use_container_width=True,
         )
 
+    return tickers, indicators, period_info, show_signals, run_analysis
+
+
+def _validate_controls(
+    indicators: list[str],
+    frequency: str,
+    start_date: date | None,
+    end_date: date | None,
+) -> str | None:
+    """
+    Check the current control selections for obvious problems before
+    running an analysis.
+
+    Returns:
+        A human-readable error message, or None if everything looks valid.
+    """
+    if not indicators:
+        return "Select at least one indicator."
+
+    if frequency == "Custom" and (start_date is None or end_date is None):
+        return "Pick a start and an end date for the custom period."
+
+    return None
+
+
+def _run_analysis(
+    tickers: list[str],
+    indicators: list[str],
+    frequency: str,
+    start_date: date | None,
+    end_date: date | None,
+) -> bool:
+    """
+    Build a request, run the analysis, and stash results in session state.
+
+    Returns:
+        True if the analysis ran (successfully or not), False if a
+        ValidationError/exception was surfaced and nothing was stored.
+    """
+    with st.spinner("Running analysis..."):
+        try:
+            request = _build_request(
+                tickers=tickers,
+                indicators=indicators,
+                frequency=frequency,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            service = AnalysisService()
+            results = service.analyze(request)
+        except ValidationError as exc:
+            st.sidebar.error(f"Invalid input: {exc}")
+            return False
+        except Exception as exc:  # noqa: BLE001 - surfaced to the UI
+            st.sidebar.error(f"Analysis failed: {exc}")
+            return False
+
+    st.session_state.analysis_results = results
+    st.session_state.analysis_failures = dict(service.failures)
+    return True
+
+
+def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
+    """
+    Render the chart, statistics, and financial statements for one ticker.
+    """
+    chart = TechnicalChart(result, show_signals=show_signals).build()
+    st.plotly_chart(
+        chart,
+        use_container_width=True,
+        key=f"chart_{result.ticker}",
+    )
+
+    st.subheader("📊 Statistics")
+    metrics, deltas = _statistics_to_metrics(result.statistics)
+    render_metrics_cards(metrics, deltas)
+
+    statements = _statements_to_dataframes(result.financial_statements)
+    if statements:
+        st.subheader("📑 Financial Statements")
+        render_financials_panel(statements)
+
+
+def _render_results(results: list[AnalysisResult], show_signals: bool) -> None:
+    """
+    Render one tab per ticker when there are multiple results, or a single
+    view when there is only one, keeping the page organized regardless of
+    how many tickers were analyzed.
+    """
+    if len(results) == 1:
+        _render_ticker_result(results[0], show_signals)
+        return
+
+    tabs = st.tabs([result.ticker for result in results])
+    for tab, result in zip(tabs, results):
+        with tab:
+            _render_ticker_result(result, show_signals)
+
+
+def show() -> None:
+    """
+    Render the Stock Analysis page.
+    """
+    st.title("📈 Stock Analysis")
+    st.caption("Technical charts, statistics, and financial statements for any ticker.")
+
+    # Hydrate the working set from disk on first visit so the user does
+    # not lose their tickers when navigating between pages.
+    if "selected_tickers" not in st.session_state:
+        st.session_state.selected_tickers = _load_cached_tickers()
+
+    tickers, indicators, period_info, show_signals, run_analysis = (
+        _render_sidebar_controls()
+    )
+
+    if not tickers:
+        st.info("Add a ticker in the sidebar to begin analysis.")
+        return
+
     frequency = period_info["frequency"]
     start_date = period_info.get("start")
     end_date = period_info.get("end")
 
-    # Surface input problems in the control column so the user sees them
-    # next to the controls they need to fix.
-    validation_error = None
-    if not indicators:
-        validation_error = "Select at least one indicator."
-    elif frequency == "Custom" and (start_date is None or end_date is None):
-        validation_error = "Pick a start and an end date for the custom period."
-
+    validation_error = _validate_controls(indicators, frequency, start_date, end_date)
     if validation_error:
-        with control_column:
-            st.warning(validation_error)
-        with chart_column:
-            st.info("Adjust the controls on the right to run an analysis.")
+        st.sidebar.warning(validation_error)
+        st.info("Adjust the controls in the sidebar to run an analysis.")
         return
 
     # Run the analysis on demand. Results are cached in session state so
     # re-renders caused by unrelated widget changes do not re-fetch data.
     if run_analysis:
-        with st.spinner("Running analysis..."):
-            try:
-                request = _build_request(
-                    tickers=tickers,
-                    indicators=indicators,
-                    frequency=frequency,
-                    start_date=start_date,
-                    end_date=end_date,
-                )
-                service = AnalysisService()
-                results = service.analyze(request)
-            except ValidationError as exc:
-                with control_column:
-                    st.error(f"Invalid input: {exc}")
-                with chart_column:
-                    st.info("Fix the inputs and try again.")
-                return
-            except Exception as exc:  # noqa: BLE001 - surfaced to the UI
-                with control_column:
-                    st.error(f"Analysis failed: {exc}")
-                with chart_column:
-                    st.info("Try again or pick different tickers.")
-                return
-
-        st.session_state.analysis_results = results
-        st.session_state.analysis_failures = dict(service.failures)
+        if not _run_analysis(tickers, indicators, frequency, start_date, end_date):
+            return
 
     results = st.session_state.get("analysis_results") or []
     failures: dict[str, str] = st.session_state.get("analysis_failures") or {}
 
-    with chart_column:
-        if not results:
-            st.info("Click Analyze to generate charts.")
-        else:
-            for result in results:
-                st.subheader(f"{result.ticker} - Technical Chart")
-                st.plotly_chart(
-                    TechnicalChart(result).build(),
-                    use_container_width=True,
-                    key=f"chart_{result.ticker}",
-                )
-
     if not results:
+        st.info("Click Analyze in the sidebar to generate charts.")
         return
 
     if failures:
         st.warning("Could not analyze: " + ", ".join(sorted(failures)))
 
-    # Financial statements table and statistics live below the chart and
-    # control columns, one block per ticker, matching the per-ticker
-    # layout of the PDF report.
-    for result in results:
-        st.divider()
-        st.header(result.ticker)
-
-        render_financials_panel(_statements_to_dataframes(result.financial_statements))
-
-        st.subheader("Statistics")
-        render_metrics_cards(_statistics_to_metrics(result.statistics))
+    _render_results(results, show_signals)
