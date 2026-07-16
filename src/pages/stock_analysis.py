@@ -1,6 +1,8 @@
 # Import standard library packages.
 import json
+import zipfile
 from datetime import date
+from io import BytesIO
 from pathlib import Path
 
 # Import third party packages.
@@ -13,6 +15,8 @@ from src.components.financials_panel import render_financials_panel
 from src.components.indicator_selector import render_indicator_selector
 from src.components.metrics_cards import render_metrics_cards
 from src.components.ticker_input import render_ticker_input
+from src.exporters.excel_exporter import ExcelExporter
+from src.exporters.pdf_exporter import PDFExporter
 from src.models.analysis_request import AnalysisRequest
 from src.models.analysis_result import AnalysisResult
 from src.models.financial_statements import FinancialStatements
@@ -281,6 +285,73 @@ def _render_results(results: list[AnalysisResult], show_signals: bool) -> None:
             _render_ticker_result(result, show_signals)
 
 
+def _build_excel_download(results: list[AnalysisResult]) -> tuple[bytes, str, str]:
+    """
+    Build the Excel download payload for the current results.
+
+    A single ticker downloads its own .xlsx directly. Multiple tickers are
+    bundled into one .zip (one .xlsx per ticker inside), since
+    ExcelExporter only writes one workbook per AnalysisResult but the page
+    should still offer just one button/one file.
+
+    Returns:
+        (file_bytes, file_name, mime_type).
+    """
+    exporter = ExcelExporter()
+
+    if len(results) == 1:
+        result = results[0]
+        return (
+            exporter.export_excel(result),
+            f"{result.ticker}_analysis.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for result in results:
+            archive.writestr(
+                f"{result.ticker}_analysis.xlsx",
+                exporter.export_excel(result),
+            )
+    buffer.seek(0)
+    return buffer.getvalue(), "analysis_export.zip", "application/zip"
+
+
+def _render_export_buttons(results: list[AnalysisResult]) -> None:
+    """
+    Render Download PDF / Download Excel buttons for the current results.
+
+    Note: both files are (re)built on every rerun this section renders,
+    including reruns triggered by unrelated widgets (e.g. the signals
+    toggle). PDF generation renders a chart image per ticker via Kaleido,
+    so this can get slow with many tickers -- worth revisiting with an
+    explicit "Generate" step if that becomes noticeable.
+    """
+    st.divider()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        pdf_bytes = PDFExporter(results).export()
+        st.download_button(
+            "📄 Download PDF",
+            data=pdf_bytes,
+            file_name="analysis_report.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+    with col2:
+        excel_bytes, excel_name, excel_mime = _build_excel_download(results)
+        st.download_button(
+            "📊 Download Excel",
+            data=excel_bytes,
+            file_name=excel_name,
+            mime=excel_mime,
+            use_container_width=True,
+        )
+
+
 def show() -> None:
     """
     Render the Stock Analysis page.
@@ -328,3 +399,4 @@ def show() -> None:
         st.warning("Could not analyze: " + ", ".join(sorted(failures)))
 
     _render_results(results, show_signals)
+    _render_export_buttons(results)
