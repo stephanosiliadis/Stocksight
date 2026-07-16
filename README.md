@@ -1,17 +1,16 @@
 ﻿# Stocksight
 
-A Python CLI that fetches historical stock data from Yahoo Finance, computes a
-configurable suite of technical indicators, detects buy/sell signals, and
-exports PDF reports, Excel workbooks, and publication-ready charts.
+A Streamlit web application for interactive stock analysis featuring real-time
+technical charting, financial statements, backtesting, PDF/Excel export, and
+Google News integration. Built with pandas, pandas-ta, Plotly, and yfinance.
 
 [![Python](https://img.shields.io/badge/Python-3.13%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.59.1%2B-FF6C6C?style=flat-square&logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![uv](https://img.shields.io/badge/uv-package%20manager-6E56CF?style=flat-square)](https://github.com/astral-sh/uv)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F0B429?style=flat-square)](LICENSE)
 [![yfinance](https://img.shields.io/badge/yfinance-Data-6C8EBF?style=flat-square)](https://github.com/ranaroussi/yfinance)
-[![Typer](https://img.shields.io/badge/Typer-CLI-009485?style=flat-square)](https://typer.tiangolo.com/)
-[![Rich](https://img.shields.io/badge/Rich-Terminal-AF5CF7?style=flat-square)](https://github.com/Textualize/rich)
 [![pandas-ta](https://img.shields.io/badge/pandas--ta-Indicators-150458?style=flat-square&logo=pandas&logoColor=white)](https://github.com/twopirllc/pandas-ta)
-[![mplfinance](https://img.shields.io/badge/mplfinance-Charts-1f77b4?style=flat-square)](https://github.com/matplotlib/mplfinance)
+[![Plotly](https://img.shields.io/badge/Plotly-Charts-003366?style=flat-square)](https://plotly.com/)
 [![fpdf2](https://img.shields.io/badge/fpdf2-PDF-d62728?style=flat-square)](https://py-pdf.github.io/fpdf2/)
 
 ---
@@ -45,50 +44,50 @@ exports PDF reports, Excel workbooks, and publication-ready charts.
 
 ## Overview
 
-Stocksight is a command-line application for technical and fundamental stock
-analysis. It fetches historical OHLCV data from **Yahoo Finance** for any
-globally listed ticker, computes a configurable suite of indicators via
-`pandas-ta`, and produces several output artefacts in a single run:
+Stocksight is a web-based stock analysis platform built with Streamlit. It
+provides an intuitive interactive interface for analyzing stock performance,
+generating trading signals, backtesting strategies, and viewing the latest
+financial news. Users can analyze single or multiple tickers simultaneously,
+compare normalized performance, and export detailed reports.
 
-- a multi-panel technical chart with overlays, oscillators, buy/sell signal
-  markers, and support/resistance levels;
-- a structured PDF report with per-ticker key statistics, fundamental data,
-  plain-English commentary, and optional financial statements and backtest
-  results;
-- a formatted Excel workbook with a per-ticker sheet plus a summary sheet
-  showing historical high/low and drawdown for the selected date range;
-- a normalised multi-ticker comparison chart (when requested).
+**Key features:**
 
-The tool is built with [Typer](https://typer.tiangolo.com/) and
-[Rich](https://github.com/Textualize/rich) for a clean terminal experience and
-supports any ticker available on Yahoo Finance, including international
-exchanges such as ATHEX (`.AT` suffix). It can be driven by command-line
-flags for scripting, or by a guided interactive menu that launches
-automatically when the tool is started with no arguments.
+- Multi-ticker analysis with synchronized controls
+- 11+ technical indicators with dynamic chart panels
+- Signal-driven backtesting with performance metrics
+- Real-time Google News integration filtered for stock-related articles
+- PDF reports with embedded charts and financial statements
+- Excel export with per-ticker sheets and summary statistics
+- Intelligent caching system for performance optimization
+- Normalized comparison charts for multi-ticker analysis
+
+The tool connects to Yahoo Finance for historical OHLCV data and fundamental
+metrics, computes indicators via `pandas-ta`, and renders interactive charts
+with Plotly.
 
 ---
 
 ## Features
 
-| Feature | Description |
-| --- | --- |
-| Interactive mode | Step-by-step menu that launches when no flags are given, with back/cancel support at every prompt. |
-| Pre-flight input validation | Dates, ticker format, period, indicator keys, and backtest capital are checked before any network call. |
-| Live data fetching | Historical OHLCV data from Yahoo Finance via `yfinance`. |
-| 11 technical indicators | Bollinger Bands, RSI, MACD, EMA 20/50/200, ATR, Stochastic, Volume, plus signal markers and support/resistance. |
-| Signal detection | Buy/sell markers from RSI crossings, MACD crossovers, and EMA golden/death crosses. |
-| Support and resistance | Auto-detected from rolling-window extrema and drawn on the chart. |
-| Fundamentals | P/E, market cap, 52W high/low, beta, EPS, revenue, sector, industry via `--fundamentals`. |
-| Financial statements | Income statement, balance sheet, and cash flow via `--statements`. |
-| Signal-driven backtest | Long-only strategy with total return, buy-and-hold, alpha, win rate, max drawdown, Sharpe, and a full trade log via `--backtest`. |
-| Comparison chart | Normalised relative-performance chart across multiple tickers via `--compare`. |
-| PDF report | Key stats, fundamentals, statements, commentary, backtest results, and the embedded chart. |
-| Excel export | One sheet per ticker plus a `Summary` sheet with high/low/drawdown stats. |
-| Preset date ranges | `1m`, `3m`, `6m`, `1y`, `5y` shortcuts via `--period`. |
-| Selective indicators | Run only the indicators you want using repeated `--indicator` flags. |
-| Config file | Defaults in `config.yaml` -- any flag or interactive input takes precedence. |
-| Standalone executable | Ships as a single file via PyInstaller; no Python required at runtime. |
-| Structured logging | Console and persistent `data/stocktool.log`; `--verbose` for full debug output. |
+| Feature                  | Description                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| Web UI with Streamlit    | Interactive sidebar controls with real-time updates and tab-based navigation.                    |
+| Multi-ticker tabs        | Analyze multiple tickers simultaneously with individual analysis tabs.                           |
+| Live stock data          | Historical OHLCV data from Yahoo Finance via `yfinance`.                                         |
+| 11+ technical indicators | Bollinger Bands, RSI, MACD, EMA 20/50/200, ATR, Stochastic, Volume with dynamic panel rendering. |
+| Signal detection         | Buy/sell markers from RSI crossings, MACD crossovers, and EMA golden/death crosses.              |
+| Support and resistance   | Auto-detected from rolling-window extrema and drawn on interactive charts.                       |
+| Fundamentals             | P/E, market cap, 52W high/low, beta, EPS, revenue, sector, industry.                             |
+| Financial statements     | Income statement, balance sheet, and cash flow integration.                                      |
+| Signal-driven backtest   | Long-only strategy with total return, buy-and-hold, alpha, win rate, max drawdown, Sharpe ratio. |
+| Comparison chart         | Normalized relative-performance chart across multiple tickers.                                   |
+| News integration         | Top 3 stock-related articles from Google News per ticker with intelligent filtering.             |
+| Intelligent caching      | Incremental data fetching with overlap detection for improved performance.                       |
+| PDF report               | Key stats, fundamentals, statements, backtest results with embedded interactive charts.          |
+| Excel export             | One sheet per ticker plus a Summary sheet with high/low/drawdown statistics.                     |
+| Flexible date ranges     | Sidebar date picker for custom analysis periods.                                                 |
+| Selective indicators     | Toggle indicators on/off in real-time for focused analysis.                                      |
+| Interactive charts       | Plotly-based multi-panel candlestick charts with hover tooltips and signals.                     |
 
 ---
 
@@ -96,37 +95,92 @@ automatically when the tool is started with no arguments.
 
 ```
 Stocksight/
-  main.py                      # CLI entry point (Typer app + interactive menu)
-  config.yaml                  # Default settings (period, indicators)
+  main.py                      # Streamlit entry point
+  config.yaml                  # Configuration (period, indicators)
   pyproject.toml               # Project metadata and dependencies
   uv.lock                      # Resolved dependency lockfile
-  Stocksight.spec              # PyInstaller build spec
-  icon.ico                     # Executable icon
   .python-version              # Pinned Python version
   LICENSE                      # MIT license
+  README.md                    # This file
 
-  data/                        # All generated outputs (auto-created)
-    stock_analysis_report.pdf
-    stock_data.xlsx
-    <TICKER>_analysis_plots.png
-    comparison_chart.png
-    stocktool.log
+  assets/
+    styles.css                 # Custom styling
 
-  utils/
+  cache/                       # Runtime caches
+    selected_tickers.json      # Persisted user ticker selection
+    fundamentals/              # Cached fundamental data
+    prices/                    # Cached price data
+    statements/                # Cached financial statements
+
+  src/
     __init__.py
-    analyzedata.py             # Indicator computation (pandas-ta)
-    backtest.py                # Long-only signal-driven backtester
-    cleandata.py               # OHLCV coercion and NaN handling
-    comparison.py              # Multi-ticker normalised comparison chart
-    fetchstockdata.py          # yfinance data fetching
-    financials.py              # Income statement, balance sheet, cash flow
-    fundamentals.py            # Valuation metrics and earnings calendar
-    generatepdfreport.py       # PDF report assembly
-    generateplots.py           # Dynamic multi-panel chart generation
-    savetoexcel.py             # Multi-sheet Excel export
-    signals.py                 # Buy/sell detection + support/resistance
-    stats.py                   # Historical high/low range statistics
-    validators.py              # Pre-flight input validation
+    components/                # Streamlit UI components
+      __init__.py
+      backtest_panel.py        # Backtest results display
+      charts.py                # Chart rendering components
+      date_selector.py         # Date range picker
+      financials_panel.py      # Financial statements display
+      fundamentals_panel.py    # Fundamentals display
+      indicator_selector.py    # Indicator toggle panel
+      metrics_cards.py         # Statistics cards
+      news_panel.py            # News articles display
+      ticker_input.py          # Ticker input component
+
+    models/                    # Pydantic data models
+      __init__.py
+      analysis_request.py      # Analysis parameters
+      analysis_result.py       # Analysis output
+      backtest_result.py       # Backtest metrics
+      financial_statements.py  # Statement data
+      fundamentals.py          # Fundamental metrics
+      signal.py                # Signal data
+      statistics.py            # Statistical metrics
+      trade.py                 # Backtest trade
+
+    pages/                     # Streamlit pages
+      __init__.py
+      backtesting.py           # Backtest page (if separate)
+      comparison.py            # Comparison page (if separate)
+      dashboard.py             # Dashboard page (if separate)
+      settings.py              # Settings page
+      stock_analysis.py        # Main analysis page
+      watchlists.py            # Watchlist page (if available)
+
+    services/                  # Business logic services
+      __init__.py
+      analysis_service.py      # Orchestrates analysis pipeline
+      backtest_service.py      # Backtesting engine
+      comparison_service.py    # Comparison logic
+      data_service.py          # Data fetching from yfinance
+      financials_service.py    # Financial statements fetching
+      fundamentals_service.py  # Fundamentals fetching
+      indicator_service.py     # Technical indicator calculation
+      signal_service.py        # Signal generation
+      statistics_service.py    # Statistics computation
+
+    tests/                     # Test modules
+      test_backtest.py
+      test_fetching.py
+      test_indicators.py
+      test_signals.py
+      test_validators.py
+
+    utils/                     # Utility modules
+      __init__.py
+      cache.py                 # Intelligent caching system
+      data_cleaner.py          # OHLCV data cleaning
+      data_fetcher.py          # Data fetching utilities
+      dates.py                 # Date utilities
+      helpers.py               # Helper functions
+      news_fetcher.py          # Google News RSS fetching
+      validators.py            # Input validation
+
+    visualization/             # Chart rendering
+      __init__.py
+      chart_theme.py           # Chart styling
+      comparison_chart.py      # Comparison chart builder
+      indicator_plots.py       # Indicator-specific plots
+      technical_chart.py       # Main technical chart
 ```
 
 ---
@@ -139,20 +193,19 @@ Stocksight/
 
 ### Runtime dependencies
 
-| Package | Purpose |
-| --- | --- |
-| `yfinance` | Historical OHLCV, fundamental data, and statements from Yahoo Finance |
-| `pandas` | Data manipulation |
-| `pandas-ta` | Technical indicator calculation |
-| `numpy` | Numerical primitives used by indicators and signals |
-| `mplfinance`, `matplotlib` | Candlestick charts and multi-panel figure rendering |
-| `fpdf2` | PDF report generation |
-| `openpyxl` | Excel workbook creation and export |
-| `typer` | CLI framework with argument parsing and help generation |
-| `rich` | Terminal formatting, progress spinners, interactive prompts, and tables |
-| `PyYAML` | `config.yaml` parsing |
-| `python-dateutil` | Relative date arithmetic for period presets |
-| `pyinstaller` | Build-time dependency for the standalone executable |
+| Package           | Purpose                                                               |
+| ----------------- | --------------------------------------------------------------------- |
+| `streamlit`       | Web UI framework for interactive analysis                             |
+| `yfinance`        | Historical OHLCV, fundamental data, and statements from Yahoo Finance |
+| `pandas`          | Data manipulation and analysis                                        |
+| `pandas-ta`       | Technical indicator calculation                                       |
+| `numpy`           | Numerical primitives used by indicators                               |
+| `plotly`          | Interactive multi-panel charting                                      |
+| `fpdf2`           | PDF report generation                                                 |
+| `openpyxl`        | Excel workbook creation and export                                    |
+| `requests`        | HTTP requests for data fetching                                       |
+| `PyYAML`          | `config.yaml` parsing                                                 |
+| `python-dateutil` | Date arithmetic and manipulation                                      |
 
 All dependencies are pinned in `pyproject.toml` and resolved in `uv.lock`.
 
@@ -175,21 +228,26 @@ All dependencies are pinned in `pyproject.toml` and resolved in `uv.lock`.
 
    This creates `.venv/` and installs the exact versions from `uv.lock`.
 
-3. **Verify the installation**
+3. **Run the application**
 
    ```bash
-   uv run python main.py --help
+   uv run main.py
    ```
 
-   You should see the Typer help output listing the available commands.
+   The Streamlit app will launch in your default browser at `http://localhost:8501`.
+
+4. **Verify the installation** (optional)
+
+   ```bash
+   uv run python -c "import streamlit; import yfinance; print('✓ Installation successful')"
+   ```
 
 ---
 
 ## Configuration
 
-All default behaviour is controlled by **`config.yaml`** in the project root.
-Any flag passed on the command line (or input entered in the interactive
-menu) takes precedence over the config file.
+The application uses **`config.yaml`** for default settings. Any selection
+made in the Streamlit UI overrides the config file.
 
 ```yaml
 # config.yaml
@@ -198,8 +256,7 @@ defaults:
   # Default date range preset (1m | 3m | 6m | 1y | 5y)
   period: "1y"
 
-  # Indicators to run when --indicator is not specified.
-  # Comment out any you don't want by default.
+  # Indicators enabled by default. Comment out any you don't want.
   indicators:
     - bollinger
     - rsi
@@ -213,572 +270,414 @@ defaults:
     - signals
     - support_resistance
 
-  # Directory for all output files
+  # Directory for output files
   output_dir: "data"
 ```
 
-If `config.yaml` is absent, all indicators are enabled and the period
-defaults to `1y`. Output files are always written to the `data/` directory
-in the current working directory (the `output_dir` key is currently
-informational and not yet wired into the runtime).
+If `config.yaml` is missing, all indicators are enabled by default and the
+period defaults to `1y`.
 
 ---
 
 ## Usage
 
-All functionality is accessed through `main.py`. The tool supports two usage
-modes:
+### Starting the Application
 
 ```bash
-uv run python main.py                        # Interactive menu (guided)
-uv run python main.py [COMMAND] [OPTIONS]    # Flag-driven (scripting / automation)
+uv run main.py
 ```
 
-When `main.py` is run with no arguments, the interactive menu launches
-automatically. The same is true when the bundled executable is
-double-clicked.
+The Streamlit web interface will launch automatically in your default browser
+at `http://localhost:8501`.
 
-### Interactive Mode
+### Interface Overview
 
-The interactive menu walks through every option step by step, validates each
-input before moving on, and shows a configuration summary before running the
-analysis. The full step list is:
+**Sidebar Controls:**
 
-1. Tickers (comma-separated)
-2. Date mode: preset period or custom range
-3. Period preset (`1m` / `3m` / `6m` / `1y` / `5y`) when applicable
-4. Start date (when custom range selected)
-5. End date (blank = today)
-6. Indicator mode: all or selective
-7. Indicators (when selective)
-8. Comparison chart
-9. Fundamentals
-10. Financial statements
-11. Backtest
-12. Backtest starting capital (when backtest selected)
-13. PDF report
-14. Excel export
-15. Verbose / debug logging
-16. Confirmation
+- **Ticker Input**: Enter one or more tickers (comma-separated)
+- **Date Selector**: Choose date range using preset periods (1m, 3m, 6m, 1y, 5y) or custom dates
+- **Indicator Selector**: Toggle technical indicators on/off for focused analysis
+- **Backtest Controls**: Enable backtesting and set initial capital
+- **Analysis Button**: Run the analysis with current settings
 
-At any prompt, type `b` (or `back`) to revisit the previous step and `c`
-(or `cancel`, `q`, `quit`) to abort the wizard entirely. Press `Enter` to
-accept the default for the current step. Defaults are pre-filled from
-`config.yaml` where applicable.
+**Main Content Area:**
 
-### Commands
+- **Analysis Tabs**: One tab per ticker showing technical charts, statistics, and financial data
+- **Comparison Tab**: Normalized performance comparison across selected tickers
+- **News Tab**: Top 3 stock-related articles from Google News per ticker
+- **Export Buttons**: Download PDF reports and Excel workbooks
 
-| Command | Description |
-| --- | --- |
-| `analyze` | Fetch, analyse, and report on one or more stock tickers. |
-| `list-indicators` | Print a table of all available indicator keys with descriptions. |
+### Workflow
 
-When invoked with no command and no flags, the interactive menu is launched
-instead of `analyze`.
+1. **Enter Tickers**: Input stock symbols in the ticker input box (e.g., `AAPL`, `MSFT,TSLA`)
 
-### `analyze`
+2. **Select Date Range**: Use sidebar presets (1m/3m/6m/1y/5y) or pick custom start/end dates
 
-Required: `--tickers` (or `-t`). All other flags are optional.
+3. **Choose Indicators**: Toggle desired technical indicators (Bollinger Bands, RSI, MACD, EMAs, etc.)
 
-```bash
-uv run python main.py analyze -t AAPL
-uv run python main.py analyze -t AAPL,MSFT --period 6m --compare --fundamentals
-```
+4. **Optional Features**:
+   - Enable backtest with starting capital
+   - Charts display signals and support/resistance levels
+   - Fundamentals and financial statements are auto-fetched
 
-### `list-indicators`
+5. **View Results**:
+   - Individual ticker tabs show candlestick charts with overlays and indicators
+   - Comparison tab displays normalized relative performance
+   - News tab shows latest Google News articles filtered for stock relevance
+   - Statistics cards show key metrics
 
-Prints a formatted table of every supported indicator key, its full name,
-and a one-line description. Use this to look up the exact key strings
-required by `--indicator`.
+6. **Export**: Download PDF reports with embedded charts or Excel workbooks with all data
 
-```bash
-uv run python main.py list-indicators
-```
+### Example Analyses
 
-### Flags Reference
+**Single Ticker - Technical Focus**
 
-| Flag | Short | Type | Default | Description |
-| --- | --- | --- | --- | --- |
-| `--tickers` | `-t` | `str` | required | Comma-separated ticker symbols, e.g. `AAPL,TSLA,NVDA`. |
-| `--start` | `-sd` | `str` | Derived from `--period` | Start date in `YYYY-MM-DD` format. |
-| `--end` | `-ed` | `str` | Today | End date in `YYYY-MM-DD` format. |
-| `--period` | `-p` | `str` | `1y` (from `config.yaml`) | Preset range: `1m`, `3m`, `6m`, `1y`, `5y`. Ignored when `--start` is set. |
-| `--indicator` | `-i` | `str` (repeatable) | All indicators | Indicator key to include. Repeat the flag for multiple. |
-| `--compare` | `-c` | flag | `False` | Generate a normalised multi-ticker comparison chart (requires 2+ tickers). |
-| `--fundamentals` | `-f` | flag | `False` | Fetch and include fundamental data in the report. |
-| `--statements` | `-s` | flag | `False` | Fetch and include income statement, balance sheet, and cash flow. |
-| `--backtest` | `-b` | flag | `False` | Run a signal-driven backtest and include results. Adds `signals` automatically. |
-| `--capital` | | `float` | `10000.0` | Starting capital for the backtest. |
-| `--no-pdf` | | flag | `False` | Skip PDF report generation. |
-| `--no-excel` | | flag | `False` | Skip Excel export. |
-| `--verbose` | `-v` | flag | `False` | Enable `DEBUG`-level logging on the console and log file. |
+- Enter: `AAPL`
+- Period: `6m` (6 months)
+- Indicators: EMA 20/50/200, RSI, MACD, Signals
+- Result: Trend analysis with support/resistance
 
-**Notes on flag behaviour**
+**Multi-Ticker Comparison**
 
-- `--indicator` must be repeated once per indicator, e.g. `-i rsi -i macd`.
-  Passing an unrecognised key prints the unknown keys and exits.
-- `--backtest` automatically enables the `signals` indicator if it was not
-  already selected.
-- `--compare` is a no-op when fewer than two tickers produced data.
+- Enter: `AAPL,MSFT,GOOG,NVDA`
+- Period: `1y` (1 year)
+- Enable: Comparison tab
+- Result: Normalized performance comparison across tech stocks
 
-### Examples
+**Strategy Backtesting**
 
-**Single ticker with all indicators over the past year (default)**
-
-```bash
-uv run python main.py analyze -t AAPL
-```
-
-**Preset period**
-
-```bash
-uv run python main.py analyze -t TSLA --period 6m
-uv run python main.py analyze -t MSFT --period 3m
-uv run python main.py analyze -t NVDA --period 5y
-```
-
-**Explicit date range**
-
-```bash
-uv run python main.py analyze -t AAPL --start 2024-01-01 --end 2024-12-31
-```
-
-**Explicit start date with today as the end date**
-
-```bash
-uv run python main.py analyze -t KARE.AT --start 2025-01-01
-```
-
-**Multiple tickers simultaneously**
-
-```bash
-uv run python main.py analyze -t AAPL,MSFT,GOOG,NVDA
-```
-
-**Normalised comparison chart** (requires 2+ tickers)
-
-```bash
-uv run python main.py analyze -t AAPL,TSLA,NVDA --compare
-```
-
-**Fundamental data in the PDF report**
-
-```bash
-uv run python main.py analyze -t AAPL --fundamentals
-```
-
-**Full statements (income, balance sheet, cash flow)**
-
-```bash
-uv run python main.py analyze -t AAPL --statements
-```
-
-**Signal-driven backtest**
-
-```bash
-uv run python main.py analyze -t AAPL --backtest --capital 25000
-```
-
-**Full run with comparison, fundamentals, and backtest**
-
-```bash
-uv run python main.py analyze -t AAPL,MSFT,GOOG --period 1y \
-    --compare --fundamentals --statements --backtest
-```
-
-**Select specific indicators only**
-
-```bash
-# RSI and MACD only
-uv run python main.py analyze -t AAPL -i rsi -i macd
-
-# EMA trend analysis with signals
-uv run python main.py analyze -t TSLA -i ema50 -i ema200 -i signals
-
-# Volatility-focused analysis
-uv run python main.py analyze -t SPY -i bollinger -i atr -i volume
-```
-
-**Skip specific outputs**
-
-```bash
-uv run python main.py analyze -t AAPL --no-pdf          # chart + Excel only
-uv run python main.py analyze -t AAPL --no-excel        # chart + PDF only
-uv run python main.py analyze -t AAPL --no-pdf --no-excel  # charts only
-```
-
-**Enable verbose debug logging**
-
-```bash
-uv run python main.py analyze -t AAPL --verbose
-```
-
-**List all available indicators**
-
-```bash
-uv run python main.py list-indicators
-```
-
-**Get help for any command**
-
-```bash
-uv run python main.py --help
-uv run python main.py analyze --help
-```
+- Enter: `TSLA`
+- Period: `1y`
+- Enable: Backtest with $10,000 initial capital
+- Result: Win rate, Sharpe ratio, drawdown, and complete trade log
 
 ---
 
 ## Input Validation
 
-All inputs, whether provided via flags or the interactive menu, are
-validated before any network request is made. The tool prints a clear
-error and exits (or re-prompts in interactive mode) when any of the
-following conditions fail.
+All user inputs are validated before any data is fetched or analysis begins.
+Invalid inputs result in clear error messages displayed in the Streamlit UI.
 
-| Condition | Behaviour |
-| --- | --- |
-| No tickers provided | "At least one ticker is required." |
-| Ticker format invalid | Rejects strings that are not `letters` or `letters.letters` (e.g. `AAPL`, `SHOP.TO`). |
-| Duplicate ticker | Rejected; duplicates must be removed before running. |
-| Unknown `--period` value | Must be one of `1m`, `3m`, `6m`, `1y`, `5y`. |
-| Invalid date format | Must be `YYYY-MM-DD`; anything else is rejected. |
-| Start date in the future | Rejected. |
-| End date in the future | Rejected. |
-| End date before start date | Rejected. |
-| Unknown indicator key | Rejected; the unknown keys are listed in the error message. |
-| No indicators selected | "At least one indicator must be selected." |
-| Non-positive backtest capital | Rejected. |
-| Non-numeric backtest capital | Rejected. |
+| Input            | Validation                                            | Behaviour                                    |
+| ---------------- | ----------------------------------------------------- | -------------------------------------------- |
+| Tickers          | Non-empty, valid format (letters or letters.letters)  | Rejects empty, invalid, or duplicate tickers |
+| Date range       | Valid `YYYY-MM-DD` format, end ≥ start, not in future | Rejects malformed dates or invalid ranges    |
+| Indicators       | At least one selected                                 | Warns if no indicators are chosen            |
+| Backtest capital | Positive number                                       | Rejects zero or negative values              |
+| Period preset    | Valid value (1m, 3m, 6m, 1y, 5y)                      | Uses config default if invalid               |
 
 ---
 
 ## Technical Indicators
 
-All indicators are computed with
-[pandas-ta](https://github.com/twopirllc/pandas-ta) on cleaned OHLCV data.
-A **12-month warmup window** is silently fetched before the requested start
-date so that long-lookback indicators (EMA 200, MACD) are fully populated
-from the very first visible bar. Warmup rows are trimmed before any chart,
-report, or export is written.
+All indicators are computed with [pandas-ta](https://github.com/twopirllc/pandas-ta)
+on cleaned OHLCV data. A **12-month warmup window** is silently fetched before
+the requested start date to ensure long-lookback indicators (EMA 200, MACD) are
+fully populated from the first visible bar. Warmup rows are trimmed before any
+display or export.
 
-### Overlay indicators
+### Overlay Indicators
 
 Rendered directly on the candlestick price panel.
 
-| Key | Name | Description |
-| --- | --- | --- |
+| Key         | Name            | Description                                                          |
+| ----------- | --------------- | -------------------------------------------------------------------- |
 | `bollinger` | Bollinger Bands | Upper and lower bands at 2 standard deviations from a 20-period SMA. |
-| `ema20` | EMA 20 | 20-period Exponential Moving Average -- short-term trend. |
-| `ema50` | EMA 50 | 50-period EMA -- medium-term trend. |
-| `ema200` | EMA 200 | 200-period EMA -- long-term benchmark. |
+| `ema20`     | EMA 20          | 20-period Exponential Moving Average -- short-term trend.            |
+| `ema50`     | EMA 50          | 50-period EMA -- medium-term trend.                                  |
+| `ema200`    | EMA 200         | 200-period EMA -- long-term benchmark.                               |
 
-### Oscillator indicators
+### Oscillator Indicators
 
-Rendered in a dedicated panel above the candlestick chart.
+Rendered in dedicated panels.
 
-| Key | Name | Description |
-| --- | --- | --- |
-| `rsi` | RSI (14) | Relative Strength Index over 14 periods. Above 70 is overbought, below 30 oversold. Threshold lines drawn automatically. |
-| `stochastic` | Stochastic Oscillator | %K and %D momentum lines. Above 80 is overbought, below 20 oversold. Overlaid on the same panel as RSI. |
-| `macd` | MACD | Moving Average Convergence Divergence: MACD line, signal line, and histogram. Drawn in its own panel below the chart. |
+| Key          | Name                  | Description                                                                         |
+| ------------ | --------------------- | ----------------------------------------------------------------------------------- |
+| `rsi`        | RSI (14)              | Relative Strength Index over 14 periods. Above 70 is overbought, below 30 oversold. |
+| `stochastic` | Stochastic Oscillator | %K and %D momentum lines. Above 80 is overbought, below 20 oversold.                |
+| `macd`       | MACD                  | Moving Average Convergence Divergence with signal line and histogram.               |
 
-### Volatility and volume
+### Volatility and Volume
 
-| Key | Name | Description |
-| --- | --- | --- |
-| `atr` | ATR (14) | Average True Range over 14 periods. Drawn in its own panel. |
-| `volume` | Volume | Bar chart coloured by price direction. Drawn in its own panel. |
+| Key      | Name     | Description                            |
+| -------- | -------- | -------------------------------------- |
+| `atr`    | ATR (14) | Average True Range over 14 periods.    |
+| `volume` | Volume   | Bar chart coloured by price direction. |
 
-### Signal detection
+### Signal Detection
 
-| Key | Name | Description |
-| --- | --- | --- |
-| `signals` | Buy / Sell Signals | Markers placed just outside the candle. Sources: RSI crosses back above 30 (buy) or below 70 (sell), MACD line crosses above/below signal line, and EMA50/EMA200 golden/death crosses. Only one marker per bar (priority: RSI > MACD > EMA). |
+| Key       | Name               | Description                                                                                              |
+| --------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `signals` | Buy / Sell Signals | Markers placed on candlesticks. Sources: RSI crosses (30/70), MACD crossovers, EMA golden/death crosses. |
 
-### Structural indicators
+### Structural Indicators
 
-| Key | Name | Description |
-| --- | --- | --- |
-| `support_resistance` | Support and Resistance | Three top support and three top resistance levels detected from rolling-window extrema (default window of 20 bars). Drawn as dotted horizontal lines on the price panel. |
-
-### Panel layout
-
-When all indicators are enabled, the chart has the following panels from top
-to bottom (only panels for active indicators are created):
-
-```
-+----------------------------------------+
-| RSI / Stochastic oscillator (optional) |
-+----------------------------------------+
-| Candlestick                           |
-| Bollinger Bands, EMA 20/50/200        |  <- price panel
-| Buy / Sell signal markers             |
-| Support and resistance levels         |
-+----------------------------------------+
-| Volume (optional)                     |
-+----------------------------------------+
-| MACD (optional)                       |
-+----------------------------------------+
-| ATR (optional)                        |
-+----------------------------------------+
-```
-
-Disabling an indicator removes its panel entirely.
+| Key                  | Name                   | Description                                                                            |
+| -------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| `support_resistance` | Support and Resistance | Three top support and resistance levels detected from rolling extrema (20-bar window). |
 
 ---
 
 ## Outputs
 
-All output files are written to the `data/` directory under the current
-working directory.
+All output files can be downloaded directly from the Streamlit interface
+using the export buttons at the bottom of the analysis page.
 
-### PDF report -- `data/stock_analysis_report.pdf`
+### PDF Report
 
-A single PDF that includes, per ticker:
+A comprehensive PDF report for each ticker including:
 
-- a per-ticker key-statistics table (period high/low, drawdown, current close);
-- fundamental data table (when `--fundamentals` is set);
-- income statement, balance sheet, and cash flow (when `--statements` is set);
-- plain-English technical commentary generated from the most recent bar;
-- backtest summary and trade log (when `--backtest` is set);
-- the per-ticker technical chart;
-- the multi-ticker comparison chart (when `--compare` is set and 2+ tickers produced data).
+- Per-ticker key statistics table (period high/low, current close, drawdown)
+- Fundamental data table (if available)
+- Income statement, balance sheet, and cash flow (if fetched)
+- Multi-panel technical chart with all selected indicators
+- Backtest summary and trade log (if enabled)
+- Comparison chart (if multiple tickers analyzed)
 
-### Excel export -- `data/stock_data.xlsx`
+### Excel Export
 
-A multi-sheet workbook:
+A multi-sheet Excel workbook containing:
 
-- a `Summary` sheet with one row per ticker containing period high, high date,
-  period low, low date, current close, percentage from high, and percentage
-  from low;
-- one sheet per ticker with the full cleaned OHLCV data plus every computed
-  indicator column.
+- **Summary** sheet: One row per ticker with period high, high date, low, low date, current close, % from high, % from low
+- **Per-ticker sheets**: Full cleaned OHLCV data with all computed indicator columns
 
-### Chart images
+### Interactive Charts
 
-- `data/<TICKER>_analysis_plots.png` -- the multi-panel technical chart for
-  each ticker.
-- `data/comparison_chart.png` -- the normalised comparison chart, when
-  `--compare` is used with 2+ tickers.
+All charts are built with Plotly and support:
 
-### Log file
+- Hover tooltips with OHLCV, indicator values, and signal information
+- Pan and zoom functionality
+- Signal markers displayed on candlesticks
+- Support/resistance levels as horizontal lines
+- Multiple indicator panels with independent y-axes
 
-- `data/stocktool.log` -- persistent log file. Appends across runs.
+### News Articles
 
----
+The News tab displays:
 
-## Date Range Behaviour
+- Top 3 stock-related articles per ticker from Google News
+- Article titles (linked to source)
+- Publication source and date
+- Filtered for stock/financial relevance
 
-Dates are resolved in the following order of precedence:
+## Caching System
 
-1. `--start` / `--end` flags -- explicit dates always win.
-2. `--period` preset -- used when `--start` is not provided.
-3. `period` key in `config.yaml`.
-4. Hard fallback of `1y`.
+Stocksight features an intelligent caching layer that optimizes performance
+when analyzing overlapping date ranges.
 
-| Flag combination | Result |
-| --- | --- |
-| `--start 2024-01-01` | `2024-01-01` to today |
-| `--start 2024-01-01 --end 2024-06-30` | Explicit range |
-| `--period 6m` | 6 months ago to today |
-| `--period 6m --end 2024-12-31` | 6 months before `2024-12-31` |
-| *(no flags)* | Reads `period` from `config.yaml`, default `1y` |
+### How It Works
 
-> **Warmup window:** an extra 12 months of data is always fetched silently
-> before the requested start date. This ensures long-lookback indicators
-> (EMA 200 needs ~200 bars; MACD needs ~35) are fully calculated from the
-> first visible bar. Warmup rows never appear in charts, the PDF, or the
-> Excel export.
+The `AnalysisCache` class detects overlaps between cached data and new requests:
 
----
+- **Full cache hit**: If the requested date range is fully cached, no new data
+  is fetched.
+- **Partial overlap**: If there's a partial match, only the missing date range
+  is fetched and merged with cached data.
+- **No cache**: If no cached data exists, the full range is fetched.
 
-## Building as a Standalone Executable
+### Example
 
-The tool can be packaged into a single executable using
-[PyInstaller](https://pyinstaller.org/). The repository ships a
-`Stocksight.spec` that bundles `main.py`, the `config.yaml` data file, and
-the application icon. The produced binary requires no Python installation
-at runtime and can be launched by double-clicking (which triggers the
-interactive menu) or from a terminal with flags.
+- **First request**: AAPL from 2025-01-01 to 2025-06-01 (fetches and caches)
+- **Second request**: AAPL from 2025-01-01 to 2025-07-01 (reuses cached data, fetches only 2025-06-01 to 2025-07-01)
 
-**Build**
+### Cache Scope
 
-```bash
-uv run pyinstaller Stocksight.spec
-```
+Cache is maintained per-ticker for the duration of the Streamlit session.
+Caching includes:
 
-The output is written to `dist/`:
+- Raw OHLCV data
+- Calculated indicators
+- Generated trading signals
 
-- Windows: `dist/Stocksight.exe`
-- macOS / Linux: `dist/Stocksight`
-
-**Run the executable**
-
-```bash
-# Interactive menu (double-click on Windows, or run with no arguments)
-./dist/Stocksight
-
-# Flag-driven, same as `uv run python main.py`
-./dist/Stocksight analyze -t AAPL --period 6m
-./dist/Stocksight list-indicators
-```
-
-**Notes on bundling**
-
-- PyInstaller is already pinned in `pyproject.toml`; `uv sync` installs it
-  into `.venv`.
-- Data-heavy packages (`yfinance`, `pandas-ta`, `mplfinance`) pull in large
-  transitive dependencies. The bundled executable is typically 100-200 MB.
-- If PyInstaller misses a hidden import during a custom build, add it
-  explicitly with `--hidden-import`.
+This significantly reduces API calls when performing multiple analyses on the
+same ticker with overlapping periods.
 
 ---
 
 ## Logging
 
-Logging writes simultaneously to the terminal and to
-`data/stocktool.log`.
+Application logs are written to the console and optionally to persistent log
+files during development.
 
-| Mode | Level | Content |
-| --- | --- | --- |
-| Normal | `INFO` | Progress messages, file save paths, per-ticker warnings. |
-| Verbose (`-v`) | `DEBUG` | Indicator calculation details, signal counts, cleaned data shapes, all intermediate steps. |
+| Level   | Content                                                                                        |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| `INFO`  | Data fetch progress, analysis completion, cache hits/misses                                    |
+| `DEBUG` | Indicator calculations, signal detection, cache decisions (enable with `--logger.level=debug`) |
+| `ERROR` | Network failures, data processing errors, validation failures                                  |
 
-```bash
-uv run python main.py analyze -t AAPL --verbose
-```
-
-The log file persists between runs and appends continuously, making it
-useful for diagnosing issues after the fact.
+Debug logging can be enabled via Streamlit's logger configuration if needed
+for troubleshooting.
 
 ---
 
-## Module Overview
+## Architecture Overview
 
-| Module | Responsibility |
-| --- | --- |
-| `main.py` | Typer CLI app, interactive menu, input validation, and orchestration of the full pipeline. |
-| `utils/fetchstockdata.py` | Downloads OHLCV data from Yahoo Finance; flattens MultiIndex columns. |
-| `utils/cleandata.py` | Coerces OHLCV columns to numeric; drops rows containing NaN in critical columns. |
-| `utils/analyzedata.py` | Computes all technical indicators via `pandas-ta`; only requested indicators are calculated. |
-| `utils/signals.py` | Detects buy/sell crossover events; detects support and resistance levels from rolling extrema. |
-| `utils/backtest.py` | Long-only signal-driven backtester; emits total return, buy-and-hold, alpha, win rate, max drawdown, Sharpe, and a full trade log. |
-| `utils/stats.py` | Computes period high/low/current close/drawdown for the selected date range. |
-| `utils/fundamentals.py` | Fetches fundamental metrics and earnings calendar from `yfinance.Ticker.info`. |
-| `utils/financials.py` | Fetches and formats income statement, balance sheet, and cash flow. |
-| `utils/generateplots.py` | Builds a dynamic multi-panel `mplfinance` chart; panels are added only for active indicators. |
-| `utils/comparison.py` | Generates a normalised relative-performance line chart across multiple tickers. |
-| `utils/generatepdfreport.py` | Assembles the full PDF report: tables, commentary, statements, backtest, and embedded chart images. |
-| `utils/savetoexcel.py` | Writes all ticker DataFrames to a multi-sheet Excel workbook with a `Summary` sheet. |
-| `utils/validators.py` | Pre-flight validators for tickers, dates, period, indicators, and backtest capital. |
+Stocksight uses a **service-oriented architecture** with clear separation of
+concerns:
+
+### Components Layer (`src/components/`)
+
+Streamlit UI elements that render interactive controls and displays:
+
+- Ticker input box with validation
+- Date selector with preset and custom range options
+- Indicator toggle switches
+- Metrics cards for statistics display
+- Financial statements panels
+- Backtest results display
+- News article list with links
+
+### Services Layer (`src/services/`)
+
+Business logic orchestrated through specialized services:
+
+| Service                   | Responsibility                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| `analysis_service.py`     | Orchestrates full analysis pipeline; manages caching; coordinates all other services |
+| `data_service.py`         | Fetches OHLCV data from Yahoo Finance; handles data cleaning                         |
+| `indicator_service.py`    | Computes all technical indicators via pandas-ta                                      |
+| `signal_service.py`       | Detects buy/sell signals from indicators; finds support/resistance levels            |
+| `backtest_service.py`     | Runs signal-driven backtest; calculates performance metrics                          |
+| `statistics_service.py`   | Computes period high/low, current close, drawdown, etc.                              |
+| `fundamentals_service.py` | Fetches valuation metrics and fundamental data                                       |
+| `financials_service.py`   | Fetches income statement, balance sheet, cash flow                                   |
+| `comparison_service.py`   | Generates normalized multi-ticker comparison data                                    |
+
+### Models Layer (`src/models/`)
+
+Pydantic data classes for type-safe data flow:
+
+- `AnalysisRequest`: User input parameters
+- `AnalysisResult`: Full analysis output
+- `BacktestResult`: Backtest metrics and trade log
+- `Signal`, `Trade`: Event data structures
+- `Statistics`, `Fundamentals`, `FinancialStatements`: Data containers
+
+### Utilities Layer (`src/utils/`)
+
+Helper modules for cross-cutting concerns:
+
+- `cache.py`: Intelligent caching with overlap detection
+- `data_cleaner.py`: OHLCV data validation and NaN handling
+- `data_fetcher.py`: HTTP request utilities
+- `news_fetcher.py`: Google News RSS fetching with filtering
+- `validators.py`: Input validation for all user-facing data
+- `dates.py`: Date arithmetic and formatting
+- `helpers.py`: Miscellaneous utilities
+
+### Visualization Layer (`src/visualization/`)
+
+Plotly-based chart builders:
+
+- `technical_chart.py`: Multi-panel chart with candlesticks, overlays, oscillators
+- `comparison_chart.py`: Normalized relative-performance line chart
+- `chart_theme.py`: Styling and color schemes
+
+### Pages Layer (`src/pages/`)
+
+Streamlit page definitions:
+
+- `stock_analysis.py`: Main analysis interface with all controls and displays
+
+### Data Flow
+
+```
+User Input (Sidebar)
+    ↓
+AnalysisService.analyze()
+    ├→ AnalysisCache.get_cache_status()
+    ├→ DataService.serve_stock_data()
+    ├→ IndicatorService.serve_indicators()
+    ├→ SignalService.serve_signals()
+    ├→ StatisticsService.serve_statistics()
+    ├→ BacktestService.serve_backtest() [optional]
+    ├→ FundamentalsService.serve_fundamentals() [optional]
+    ├→ FinancialsService.serve_financial_statements() [optional]
+    └→ AnalysisCache.store_cache()
+    ↓
+AnalysisResult
+    ├→ TechnicalChart.build() → Plotly Figure
+    ├→ ComparisonChart.build() → Plotly Figure
+    └→ PDFExporter / ExcelExporter → Files
+    ↓
+Streamlit UI Tabs + Downloads
+```
 
 ---
 
 ## Roadmap and TODOs
 
-### High priority
+### Recently Completed
 
-- [x] Add a back/cancel option to the interactive flow so users can revise
-  an earlier answer without restarting the application.
-- [x] Add historical high/low statistics for the selected date range and
-  include them in the PDF report, Excel export, and terminal summary.
-- [x] Validate empty ticker input, duplicate tickers, unsupported symbols,
-  invalid date ranges, and unsupported period values before network
-  requests are made.
-- [x] Update the README so documented flags match the current CLI,
-  including `--statements`, `--backtest`, `--capital`, and the actual
-  short options.
+- [x] Converted from CLI to Streamlit web interface
+- [x] Multi-ticker analysis with synchronized tabs
+- [x] Backtest integration with capital input
+- [x] Comparison chart for multiple tickers
+- [x] News articles tab with Google News integration
+- [x] Intelligent caching system with overlap detection
+- [x] PDF and Excel export with embedded charts
 
-### Analysis and reporting
+### High Priority
 
-- [ ] Add a portfolio-level summary across all analysed tickers: total
-  return over the selected range, average drawdown from high, and distance
-  from support and resistance.
-- [ ] Extend the backtest module with transaction costs, slippage,
-  configurable position sizing, stop-loss, take-profit, and max-position
-  constraints.
-- [ ] Add benchmark comparison support, such as comparing selected tickers
-  against SPY, QQQ, or a user-provided benchmark ticker.
-- [ ] Add risk metrics to reports: annualized volatility, beta versus
-  benchmark, downside deviation, Sortino ratio, and value-at-risk.
-- [ ] Include earnings dates and upcoming corporate events in the report
-  when available from the data provider.
-- [ ] Add optional CSV export for users who do not need a formatted Excel
-  workbook.
-- [ ] Add report metadata, including command arguments, data source
-  timestamp, package version, and generated file paths.
+- [ ] Improve news filtering to eliminate non-financial articles more reliably
+- [ ] Add session state persistence (save/load analysis configurations)
+- [ ] Add watchlist functionality to save and load ticker groups
+- [ ] Extend backtest with transaction costs, slippage, and position sizing
+- [ ] Add risk metrics: volatility, beta, Sortino ratio, Value-at-Risk
 
-### User experience
+### Analysis and Reporting
 
-- [ ] Add an interactive review screen before execution that lets users
-  edit tickers, date range, indicators, output choices, and analysis
-  options.
-- [ ] Add a saved-profile feature for common analysis setups, such as
-  dividend stocks, growth stocks, index ETFs, or custom watchlists.
-- [ ] Improve terminal output with a clear per-ticker status table showing
-  fetched rows, generated indicators, warnings, and output paths.
-- [ ] Add clearer help text for indicators, especially when indicators
-  depend on other calculated columns.
-- [ ] Add a `--output-dir` option so generated reports can be written
-  outside the default `data/` directory.
-- [ ] Add a `--watchlist` option that reads tickers from a text, CSV, or
-  YAML file.
+- [ ] Add portfolio-level summary across all analyzed tickers
+- [ ] Add benchmark comparison (SPY, QQQ, or user-provided)
+- [ ] Extend backtest with stop-loss, take-profit, max-position constraints
+- [ ] Add dividend history and yield analysis
+- [ ] Add valuation metrics: P/E trends, P/B, EV/EBITDA, FCF yield
+- [ ] Include upcoming earnings dates in reports
 
-### Data and reliability
+### User Experience
 
-- [ ] Add a lightweight cache for downloaded price data and fundamentals
-  to reduce repeated Yahoo Finance requests during development and batch
-  runs.
-- [ ] Add retry and timeout configuration for all network calls.
-- [ ] Normalize ticker handling for international exchanges and document
-  provider-specific suffix requirements.
-- [ ] Preserve raw downloaded data separately from cleaned/analyzed data
-  so data quality issues are easier to inspect.
-- [ ] Add schema checks for required OHLCV columns before indicator
-  calculation.
-- [ ] Add graceful handling for missing volume, adjusted close,
-  fundamentals, or statement rows.
+- [ ] Add dark mode toggle
+- [ ] Add indicator parameter customization (e.g., RSI period, Bollinger deviation)
+- [ ] Add favorited tickers list in sidebar
+- [ ] Add export templates with custom branding
+- [ ] Add annotation tools for chart markup
+- [ ] Improve mobile responsiveness
 
-### Testing and quality
+### Data and Performance
 
-- [ ] Add unit tests for date resolution, indicator selection, signal
-  detection, support/resistance detection, and backtest calculations.
-- [ ] Add integration tests that run a small analysis with mocked
-  `yfinance` responses and verify expected PDF, Excel, and chart outputs
-  are created.
-- [ ] Add regression tests for PDF generation so sections remain present
-  when fundamentals, statements, comparison, or backtests are enabled.
-- [ ] Add static checks for formatting, imports, and type hints.
-- [ ] Add CI that installs dependencies, runs tests, and builds the
-  executable spec on every pull request.
-- [ ] Add sample fixture data so tests do not depend on live market data.
+- [ ] Extend caching to persist between sessions (SQLite backend)
+- [ ] Add retry and timeout configuration for network calls
+- [ ] Normalize international ticker handling (document exchange suffixes)
+- [ ] Add graceful handling for missing data (weekends, holidays)
+- [ ] Add schema validation for OHLCV data quality
 
-### Packaging and distribution
+### Testing and Quality
 
-- [ ] Add application versioning and expose it through `--version`.
-- [ ] Add release notes or a changelog for user-facing changes.
-- [ ] Confirm the packaged executable works on a clean Windows machine
-  without a local Python installation.
-- [ ] Add dependency pinning or a lock file to make installs and builds
-  reproducible. *(lockfile is committed; document the workflow.)*
+- [ ] Add unit tests for services (data fetching, signal generation, backtest)
+- [ ] Add integration tests with mocked yfinance responses
+- [ ] Add tests for PDF and Excel export output
+- [ ] Add regression tests for chart rendering
+- [ ] Add static type checking (mypy) to CI
 
-### Future enhancements
+### Deployment and Distribution
 
-- [ ] Add a desktop or web UI for users who prefer not to work from the
-  command line.
-- [ ] Add alerts for price crossing moving averages, support/resistance
-  levels, RSI thresholds, or new buy/sell signals.
-- [ ] Add sector and industry comparison views for peer analysis.
-- [ ] Add dividend history, dividend yield trends, and payout ratio
-  analysis.
-- [ ] Add valuation metrics such as price-to-sales, price-to-book,
-  EV/EBITDA, free-cash-flow yield, and historical valuation ranges.
-- [ ] Add export templates for professional report branding, including
-  logo, color palette, and disclaimer text.
-- [ ] Add support for alternative data providers to reduce dependency on a
-  single source.
-- [ ] Add a proper disclaimer section explaining that generated analysis
-  is informational and not financial advice.
+- [ ] Add Streamlit Cloud deployment configuration
+- [ ] Add Docker containerization
+- [ ] Document deployment on VPS (Gunicorn + Streamlit)
+- [ ] Add application versioning and release notes
+- [ ] Add health checks and error monitoring
+
+### Future Enhancements
+
+- [ ] Add real-time price tickers in sidebar
+- [ ] Add alerts for technical levels or signals
+- [ ] Add sector and industry comparison views
+- [ ] Add peer stock comparison within sectors
+- [ ] Add advanced charting features (annotations, trend lines)
+- [ ] Add option chain visualization (if data available)
+- [ ] Add correlation matrix for multi-ticker analysis
+- [ ] Add machine learning-based signal generation (experimental)
+- [ ] Support alternative data providers (Alpha Vantage, IEX Cloud)
 
 ---
 
