@@ -332,8 +332,14 @@ def _render_comparison_tab(results: list[AnalysisResult]) -> None:
         comparison_data[result.ticker] = normalized
 
     comparison_chart = ComparisonChart(normalized_data=comparison_data)
+    chart_figure = comparison_chart.build()
+
+    if chart_figure is None:
+        st.error("Could not generate comparison chart.")
+        return
+
     st.plotly_chart(
-        comparison_chart.build(),
+        chart_figure,
         use_container_width=True,
         key="comparison_chart",
     )
