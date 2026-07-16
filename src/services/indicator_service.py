@@ -25,6 +25,7 @@ class IndicatorService:
         "ema200",
         "atr",
         "stochastic",
+        "volume",
     ]
 
     def __init__(self) -> None:
@@ -37,6 +38,7 @@ class IndicatorService:
             "ema200": self._calculate_ema200,
             "atr": self._calculate_atr,
             "stochastic": self._calculate_stochastic,
+            "volume": self._calculate_volume,
         }
 
     def serve_indicators(
@@ -154,6 +156,16 @@ class IndicatorService:
             length=14,
         )
 
+        return data
+
+    def _calculate_volume(self, data: DataFrame) -> DataFrame:
+        """
+        No-op indicator for Volume.
+
+        Volume is already present in the raw OHLCV data, so no extra
+        calculation is required. This method exists to keep Volume in the
+        indicator pipeline and allow the UI selection to be validated.
+        """
         return data
 
     def _calculate_stochastic(self, data: DataFrame) -> DataFrame:

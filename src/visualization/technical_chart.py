@@ -46,7 +46,7 @@ class TechnicalChart:
             show_volume: Whether to include a Volume panel.
             theme: Color palette. Defaults to a new ChartTheme().
         """
-        self._data = result.indicators
+        self._data = self._normalize_index(result.indicators)
         self._ticker = result.ticker
         self._indicators = result.active_indicators
         self._signals = result.signals if show_signals else []
@@ -56,6 +56,24 @@ class TechnicalChart:
         self._theme = theme or ChartTheme()
         self._indicator_plots = IndicatorPlots(self._data, self._theme)
         self._figure: go.Figure | None = None
+
+    def _normalize_index(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Ensure the DataFrame has a proper datetime64 DatetimeIndex.
+
+        If the index arrives as dtype "object" holding individual
+        Timestamp instances (rather than a vectorized datetime64 index),
+        every trace built from it serializes element-by-element instead
+        of as a single array. That's harmless for the interactive
+        st.plotly_chart view, but breaks Kaleido's orjson-based PNG
+        export (used for PDF/Excel charts) with
+        "Type is not JSON serializable: Timestamp". Coercing here once
+        means every trace built downstream is safe regardless of what
+        dtype the index arrived as.
+        """
+        data = data.copy()
+        data.index = pd.DatetimeIndex(data.index)
+        return data
 
     def build(self) -> go.Figure:
         """
@@ -265,7 +283,7 @@ class TechnicalChart:
         """Add one scatter trace (buy or sell) built from a list of Signals."""
         fig.add_trace(
             go.Scatter(
-                x=[s.date for s in signals],
+                x=[pd.Timestamp(s.date).to_pydatetime() for s in signals],
                 y=[s.price for s in signals],
                 name=label,
                 mode="markers",
