@@ -305,8 +305,8 @@ class TechnicalChart:
         for level in self._support_levels:
             fig.add_hline(
                 y=level,
-                row=row,
-                col=1,
+                row=row,  # type: ignore
+                col=1,  # type: ignore
                 line_dash="dot",
                 line_color=self._theme.lime,
                 opacity=0.75,
@@ -315,8 +315,8 @@ class TechnicalChart:
         for level in self._resistance_levels:
             fig.add_hline(
                 y=level,
-                row=row,
-                col=1,
+                row=row,  # type: ignore
+                col=1,  # type: ignore
                 line_dash="dot",
                 line_color=self._theme.tomato,
                 opacity=0.75,
@@ -335,16 +335,16 @@ class TechnicalChart:
         oversold, overbought = (30, 70) if has_rsi else (20, 80)
         fig.add_hline(
             y=oversold,
-            row=row,
-            col=1,
+            row=row,  # type: ignore
+            col=1,  # type: ignore
             line_dash="dash",
             line_color=self._theme.lime,
             opacity=0.9,
         )
         fig.add_hline(
             y=overbought,
-            row=row,
-            col=1,
+            row=row,  # type: ignore
+            col=1,  # type: ignore
             line_dash="dash",
             line_color=self._theme.tomato,
             opacity=0.9,
@@ -354,7 +354,7 @@ class TechnicalChart:
     def _add_macd_panel(self, fig: go.Figure, row: int) -> None:
         """Add MACD traces and the zero line to the MACD panel."""
         self._add_traces(fig, row, self._indicator_plots.build_macd_traces())
-        fig.add_hline(y=0, row=row, col=1, line_color="gray", opacity=0.5)
+        fig.add_hline(y=0, row=row, col=1, line_color="gray", opacity=0.5)  # type: ignore
 
     def _add_traces(self, fig: go.Figure, row: int, traces: list) -> None:
         """Add a batch of pre-built traces onto a given panel row."""

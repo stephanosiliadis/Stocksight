@@ -286,7 +286,7 @@ def draw_trade_log(pdf: FPDF, trades: list) -> None:
         new_y="NEXT",
     )
 
-    col_widths = [26, 26, 26, 26, 30, 26, 30]
+    col_widths = [26.0, 26.0, 26.0, 26.0, 30.0, 26.0, 30.0]
     headers = ["Entry Date", "Exit Date", "Entry $", "Exit $", "P&L $", "P&L %", ""]
 
     pdf.set_fill_color(*_TABLE_HEADER_RGB)
