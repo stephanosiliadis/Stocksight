@@ -15,6 +15,7 @@ from src.components.date_selector import render_date_selector
 from src.components.financials_panel import render_financials_panel
 from src.components.indicator_selector import render_indicator_selector
 from src.components.metrics_cards import render_metrics_cards
+from src.components.news_panel import render_news_panel
 from src.components.ticker_input import render_ticker_input
 from src.exporters.excel_exporter import ExcelExporter
 from src.exporters.pdf_exporter import PDFExporter
@@ -350,24 +351,32 @@ def _render_results(results: list[AnalysisResult], show_signals: bool) -> None:
     Render one tab per ticker when there are multiple results, or a single
     view when there is only one, keeping the page organized regardless of
     how many tickers were analyzed. For multiple results, the last tab
-    displays a comparison chart.
+    displays a comparison chart, and the final tab displays news articles.
     """
     if len(results) == 1:
         _render_ticker_result(results[0], show_signals)
+        st.divider()
+        render_news_panel(results[0].ticker)
         return
 
-    # Create tabs for each ticker plus a final comparison tab
-    tab_labels = [result.ticker for result in results] + ["Comparison"]
+    # Create tabs for each ticker plus a final comparison tab and news tab
+    tab_labels = [result.ticker for result in results] + ["Comparison", "News"]
     tabs = st.tabs(tab_labels)
 
     # Render each ticker's individual tab
-    for tab, result in zip(tabs[:-1], results):
+    for tab, result in zip(tabs[:-2], results):
         with tab:
             _render_ticker_result(result, show_signals)
 
-    # Render the comparison tab as the last tab
-    with tabs[-1]:
+    # Render the comparison tab
+    with tabs[-2]:
         _render_comparison_tab(results)
+
+    # Render the news tab - show articles for all tickers
+    with tabs[-1]:
+        for result in results:
+            render_news_panel(result.ticker)
+            st.divider()
 
 
 def _build_excel_download(results: list[AnalysisResult]) -> tuple[bytes, str, str]:
