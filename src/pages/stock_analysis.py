@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 
 # Import local packages.
+from src.components.backtest_panel import render_backtest_panel
 from src.components.date_selector import render_date_selector
 from src.components.financials_panel import render_financials_panel
 from src.components.indicator_selector import render_indicator_selector
@@ -23,6 +24,7 @@ from src.models.financial_statements import FinancialStatements
 from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService
 from src.utils.validators import ValidationError
+from src.visualization.comparison_chart import ComparisonChart
 from src.visualization.technical_chart import TechnicalChart
 
 # Persisted list of tickers the user has been working with, so a page
@@ -127,6 +129,8 @@ def _build_request(
     frequency: str,
     start_date: date | None,
     end_date: date | None,
+    enable_backtest: bool = False,
+    initial_capital: float = 10000.0,
 ) -> AnalysisRequest:
     """
     Translate the UI selections into an AnalysisRequest.
@@ -139,6 +143,8 @@ def _build_request(
             period=None,
             indicators=indicators,
             include_statements=True,
+            backtest=enable_backtest,
+            initial_capital=initial_capital,
         )
 
     return AnalysisRequest(
@@ -148,17 +154,21 @@ def _build_request(
         period=_FREQUENCY_TO_PERIOD.get(frequency, "1y"),
         indicators=indicators,
         include_statements=True,
+        backtest=enable_backtest,
+        initial_capital=initial_capital,
     )
 
 
-def _render_sidebar_controls() -> tuple[list[str], list[str], dict, bool, bool]:
+def _render_sidebar_controls() -> (
+    tuple[list[str], list[str], dict, bool, bool, bool, float]
+):
     """
     Render every input control in the sidebar, so the main area is left
     free for charts and results.
 
     Returns:
         Tuple of (tickers, indicators, period_info, show_signals,
-        run_analysis).
+        run_analysis, enable_backtest, initial_capital).
     """
     with st.sidebar:
         st.header("Controls")
@@ -180,13 +190,39 @@ def _render_sidebar_controls() -> tuple[list[str], list[str], dict, bool, bool]:
         )
 
         st.divider()
+        enable_backtest = st.checkbox(
+            "Run backtest",
+            value=False,
+            help="Simulate trades based on generated signals.",
+        )
+
+        if enable_backtest:
+            initial_capital = st.number_input(
+                "Initial capital ($)",
+                value=10000.0,
+                min_value=100.0,
+                step=1000.0,
+                help="Starting portfolio value for backtest.",
+            )
+        else:
+            initial_capital = 10000.0
+
+        st.divider()
         run_analysis = st.button(
             "Analyze",
             type="primary",
             use_container_width=True,
         )
 
-    return tickers, indicators, period_info, show_signals, run_analysis
+    return (
+        tickers,
+        indicators,
+        period_info,
+        show_signals,
+        run_analysis,
+        enable_backtest,
+        initial_capital,
+    )
 
 
 def _validate_controls(
@@ -217,6 +253,8 @@ def _run_analysis(
     frequency: str,
     start_date: date | None,
     end_date: date | None,
+    enable_backtest: bool = False,
+    initial_capital: float = 10000.0,
 ) -> bool:
     """
     Build a request, run the analysis, and stash results in session state.
@@ -233,6 +271,8 @@ def _run_analysis(
                 frequency=frequency,
                 start_date=start_date,
                 end_date=end_date,
+                enable_backtest=enable_backtest,
+                initial_capital=initial_capital,
             )
             service = AnalysisService()
             results = service.analyze(request)
@@ -250,7 +290,8 @@ def _run_analysis(
 
 def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     """
-    Render the chart, statistics, and financial statements for one ticker.
+    Render the chart, statistics, financial statements, and backtest results
+    for one ticker.
     """
     chart = TechnicalChart(result, show_signals=show_signals).build()
     st.plotly_chart(
@@ -268,21 +309,59 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
         st.subheader("📑 Financial Statements")
         render_financials_panel(statements)
 
+    # Display backtest results if available
+    if result.backtest_result:
+        st.divider()
+        backtest_data = {
+            "total_return": f"{result.backtest_result.total_return:.2f}%",
+            "sharpe_ratio": f"{result.backtest_result.sharpe_ratio:.2f}",
+            "max_drawdown": f"{result.backtest_result.max_drawdown:.2f}%",
+            "win_rate": f"{result.backtest_result.win_rate:.2f}%",
+        }
+        render_backtest_panel(backtest_data)
+
+
+def _render_comparison_tab(results: list[AnalysisResult]) -> None:
+    """
+    Render a comparison chart showing normalized price performance across
+    multiple tickers.
+    """
+    comparison_data = {}
+    for result in results:
+        normalized = result.raw_data["Close"] / result.raw_data["Close"].iloc[0] * 100
+        comparison_data[result.ticker] = normalized
+
+    comparison_chart = ComparisonChart(normalized_data=comparison_data)
+    st.plotly_chart(
+        comparison_chart.build(),
+        use_container_width=True,
+        key="comparison_chart",
+    )
+
 
 def _render_results(results: list[AnalysisResult], show_signals: bool) -> None:
     """
     Render one tab per ticker when there are multiple results, or a single
     view when there is only one, keeping the page organized regardless of
-    how many tickers were analyzed.
+    how many tickers were analyzed. For multiple results, the last tab
+    displays a comparison chart.
     """
     if len(results) == 1:
         _render_ticker_result(results[0], show_signals)
         return
 
-    tabs = st.tabs([result.ticker for result in results])
-    for tab, result in zip(tabs, results):
+    # Create tabs for each ticker plus a final comparison tab
+    tab_labels = [result.ticker for result in results] + ["Comparison"]
+    tabs = st.tabs(tab_labels)
+
+    # Render each ticker's individual tab
+    for tab, result in zip(tabs[:-1], results):
         with tab:
             _render_ticker_result(result, show_signals)
+
+    # Render the comparison tab as the last tab
+    with tabs[-1]:
+        _render_comparison_tab(results)
 
 
 def _build_excel_download(results: list[AnalysisResult]) -> tuple[bytes, str, str]:
@@ -364,9 +443,15 @@ def show() -> None:
     if "selected_tickers" not in st.session_state:
         st.session_state.selected_tickers = _load_cached_tickers()
 
-    tickers, indicators, period_info, show_signals, run_analysis = (
-        _render_sidebar_controls()
-    )
+    (
+        tickers,
+        indicators,
+        period_info,
+        show_signals,
+        run_analysis,
+        enable_backtest,
+        initial_capital,
+    ) = _render_sidebar_controls()
 
     if not tickers:
         st.info("Add a ticker in the sidebar to begin analysis.")
@@ -385,7 +470,15 @@ def show() -> None:
     # Run the analysis on demand. Results are cached in session state so
     # re-renders caused by unrelated widget changes do not re-fetch data.
     if run_analysis:
-        if not _run_analysis(tickers, indicators, frequency, start_date, end_date):
+        if not _run_analysis(
+            tickers,
+            indicators,
+            frequency,
+            start_date,
+            end_date,
+            enable_backtest,
+            initial_capital,
+        ):
             return
 
     results = st.session_state.get("analysis_results") or []

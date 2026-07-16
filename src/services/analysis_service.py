@@ -141,6 +141,11 @@ class AnalysisService:
         visible_indicators = indicator_data.loc[
             indicator_data.index >= indicator_cutoff
         ]
+
+        # Filter signals to only include those within the visible data period
+        # to avoid mismatches between warmup signals and backtest data range
+        visible_signals = [sig for sig in signals if pd.Timestamp(sig.date) >= cutoff]
+
         statistics = self.statistics_service.serve_statistics(visible_data)
 
         if statistics is None:
@@ -161,7 +166,7 @@ class AnalysisService:
             backtest_result = self.backtest_service.serve_backtest(
                 ticker=ticker,
                 data=visible_data,
-                signals=signals,
+                signals=visible_signals,
                 initial_capital=request.initial_capital,
             )
 
@@ -170,7 +175,7 @@ class AnalysisService:
             raw_data=visible_data,
             active_indicators=indicators,
             indicators=visible_indicators,
-            signals=signals,
+            signals=visible_signals,
             statistics=statistics,
             fundamentals=fundamentals,
             financial_statements=financial_statements,
