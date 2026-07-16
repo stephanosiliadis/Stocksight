@@ -15,6 +15,7 @@ from src.services.fundamentals_service import FundamentalsService
 from src.services.indicator_service import IndicatorService
 from src.services.signal_service import SignalService
 from src.services.statistics_service import StatisticsService
+from src.utils.cache import AnalysisCache
 from src.utils.validators import (
     ValidationError,
     validate_backtest_capital,
@@ -53,6 +54,7 @@ class AnalysisService:
         self.fundamentals_service = FundamentalsService()
         self.financials_service = FinancialsService()
         self.backtest_service = BacktestService()
+        self.cache = AnalysisCache()
         # Populated by analyze() with {ticker: error_message} for any ticker
         # that failed in isolation without aborting the rest of the batch.
         self.failures: dict[str, str] = {}
@@ -111,40 +113,85 @@ class AnalysisService:
         end_date: date,
         warmup_start: date,
     ) -> AnalysisResult | None:
-        raw_data = self.data_service.serve_stock_data(
-            ticker=ticker,
-            start_date=warmup_start.isoformat(),
-            end_date=end_date.isoformat(),
-        )
-
-        if raw_data is None or raw_data.empty:
-            return None
-
-        indicator_data = self.indicator_service.serve_indicators(
-            raw_data,
-            indicators,
-        )
-
-        if indicator_data is None or indicator_data.empty:
-            return None
-
-        signals = self.signal_service.serve_signals(
-            indicator_data,
-            indicators,
+        # Check cache for overlapping data
+        cached_entry, fetch_start, fetch_end = self.cache.get_cache_status(
             ticker,
+            warmup_start,
+            end_date,
         )
-        cutoff = self._as_comparable_timestamp(start_date, raw_data.index)
-        visible_data = raw_data.loc[raw_data.index >= cutoff]
+
+        # Fetch new data only if needed (not fully cached)
+        raw_data = None
+        indicator_data = None
+        new_signals = None
+
+        if fetch_start is not None and fetch_end is not None:
+            # Need to fetch some new data
+            raw_data = self.data_service.serve_stock_data(
+                ticker=ticker,
+                start_date=fetch_start.isoformat(),
+                end_date=fetch_end.isoformat(),
+            )
+
+            if raw_data is not None and not raw_data.empty:
+                indicator_data = self.indicator_service.serve_indicators(
+                    raw_data,
+                    indicators,
+                )
+                new_signals = self.signal_service.serve_signals(
+                    indicator_data,
+                    indicators,
+                    ticker,
+                )
+
+            # Merge cached and new data
+            merged_raw, merged_indicators, merged_signals = self.cache.merge_data(
+                cached_entry,
+                raw_data,
+                indicator_data,
+                new_signals,
+                warmup_start,
+                end_date,
+            )
+        elif cached_entry is not None:
+            # Fully cached; use cache only
+            merged_raw = cached_entry.raw_data
+            merged_indicators = cached_entry.indicators
+            merged_signals = cached_entry.signals
+        else:
+            # No cache and no fetch range (shouldn't happen, but handle it)
+            return None
+
+        if merged_raw is None or merged_raw.empty:
+            return None
+
+        if merged_indicators is None or merged_indicators.empty:
+            return None
+
+        # Filter to visible date range for display
+        cutoff = self._as_comparable_timestamp(start_date, merged_raw.index)
+        visible_data = merged_raw.loc[merged_raw.index >= cutoff]
         indicator_cutoff = self._as_comparable_timestamp(
-            start_date, indicator_data.index
+            start_date, merged_indicators.index
         )
-        visible_indicators = indicator_data.loc[
-            indicator_data.index >= indicator_cutoff
+        visible_indicators = merged_indicators.loc[
+            merged_indicators.index >= indicator_cutoff
         ]
 
         # Filter signals to only include those within the visible data period
-        # to avoid mismatches between warmup signals and backtest data range
-        visible_signals = [sig for sig in signals if pd.Timestamp(sig.date) >= cutoff]
+        visible_signals = [
+            sig for sig in merged_signals if pd.Timestamp(sig.date) >= cutoff
+        ]
+
+        # Cache the full merged data for future requests
+        self.cache.store_cache(
+            ticker=ticker,
+            start_date=warmup_start,
+            end_date=end_date,
+            raw_data=merged_raw,
+            indicators=merged_indicators,
+            signals=merged_signals,
+        )
 
         statistics = self.statistics_service.serve_statistics(visible_data)
 
