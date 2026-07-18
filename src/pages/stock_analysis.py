@@ -294,7 +294,23 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     Render the chart, statistics, financial statements, and backtest results
     for one ticker.
     """
-    chart = TechnicalChart(result, show_signals=show_signals).build()
+    # Trend badge
+    if result.trend is not None:
+        trend_label = result.trend.trend.name.title()
+        trend_strength = f"{result.trend.strength:.0f}/100"
+    else:
+        trend_label = "N/A"
+        trend_strength = "0/100"
+
+    st.metric("Trend", trend_label, trend_strength)
+
+    chart = TechnicalChart(
+        result,
+        show_signals=show_signals,
+        support_levels=result.support_levels,
+        resistance_levels=result.resistance_levels,
+        breakout_events=result.breakout_events,
+    ).build()
     st.plotly_chart(
         chart,
         use_container_width=True,

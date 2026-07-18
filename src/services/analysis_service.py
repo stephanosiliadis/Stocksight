@@ -14,6 +14,8 @@ from src.services.financials_service import FinancialsService
 from src.services.fundamentals_service import FundamentalsService
 from src.services.indicator_service import IndicatorService
 from src.services.signal_service import SignalService
+from src.services.support_resistance_service import SupportResistanceService
+from src.services.trend_service import TrendService
 from src.services.statistics_service import StatisticsService
 from src.utils.cache import AnalysisCache
 from src.utils.validators import (
@@ -50,6 +52,8 @@ class AnalysisService:
         self.data_service = DataService()
         self.indicator_service = IndicatorService()
         self.signal_service = SignalService()
+        self.support_service = SupportResistanceService()
+        self.trend_service = TrendService()
         self.statistics_service = StatisticsService()
         self.fundamentals_service = FundamentalsService()
         self.financials_service = FinancialsService()
@@ -217,6 +221,22 @@ class AnalysisService:
                 initial_capital=request.initial_capital,
             )
 
+        # Compute market structure: support/resistance, trend, breakouts
+        try:
+            support_levels, resistance_levels = self.support_service.serve_levels(
+                merged_raw
+            )
+            breakout_events = self.support_service.detect_breakouts(
+                merged_raw, support_levels + resistance_levels
+            )
+        except Exception:
+            support_levels, resistance_levels, breakout_events = [], [], []
+
+        try:
+            trend = self.trend_service.classify(merged_indicators)
+        except Exception:
+            trend = None
+
         return AnalysisResult(
             ticker=ticker,
             raw_data=visible_data,
@@ -227,6 +247,10 @@ class AnalysisService:
             fundamentals=fundamentals,
             financial_statements=financial_statements,
             backtest_result=backtest_result,
+            support_levels=support_levels,
+            resistance_levels=resistance_levels,
+            trend=trend,
+            breakout_events=breakout_events,
         )
 
     def _as_comparable_timestamp(

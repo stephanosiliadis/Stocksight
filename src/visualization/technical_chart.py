@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 # Import local packages.
 from src.models.analysis_result import AnalysisResult
 from src.models.signal import Signal, SignalType
+from src.models.market_structure import SupportResistanceLevel, BreakoutEvent
 from src.visualization.chart_theme import ChartTheme
 from src.visualization.indicator_plots import IndicatorPlots
 
@@ -29,8 +30,9 @@ class TechnicalChart:
         self,
         result: AnalysisResult,
         show_signals: bool = True,
-        support_levels: list[float] | None = None,
-        resistance_levels: list[float] | None = None,
+        support_levels: list[SupportResistanceLevel] | None = None,
+        resistance_levels: list[SupportResistanceLevel] | None = None,
+        breakout_events: list[BreakoutEvent] | None = None,
         show_volume: bool = True,
         theme: ChartTheme | None = None,
     ) -> None:
@@ -52,6 +54,7 @@ class TechnicalChart:
         self._signals = result.signals if show_signals else []
         self._support_levels = support_levels or []
         self._resistance_levels = resistance_levels or []
+        self._breakout_events = breakout_events or []
         self._show_volume = show_volume
         self._theme = theme or ChartTheme()
         self._indicator_plots = IndicatorPlots(self._data, self._theme)
@@ -302,25 +305,37 @@ class TechnicalChart:
 
     def _add_support_resistance(self, fig: go.Figure, row: int) -> None:
         """Draw horizontal support and resistance lines on the candlestick panel."""
+        # Render support levels with opacity/width by strength
         for level in self._support_levels:
+            # Strength -> width/opacity mapping
+            width = min(6, 1 + level.strength)
+            opacity = min(1.0, 0.2 + 0.15 * level.strength)
             fig.add_hline(
-                y=level,
+                y=level.price,
                 row=row,  # type: ignore
                 col=1,  # type: ignore
                 line_dash="dot",
                 line_color=self._theme.lime,
-                opacity=0.75,
+                opacity=opacity,
+                line_width=width,
             )
 
         for level in self._resistance_levels:
+            width = min(6, 1 + level.strength)
+            opacity = min(1.0, 0.2 + 0.15 * level.strength)
             fig.add_hline(
-                y=level,
+                y=level.price,
                 row=row,  # type: ignore
                 col=1,  # type: ignore
                 line_dash="dot",
                 line_color=self._theme.tomato,
-                opacity=0.75,
+                opacity=opacity,
+                line_width=width,
             )
+
+        # Add breakout markers if any
+        if self._breakout_events:
+            self._add_breakout_markers(fig, row, self._breakout_events)
 
     def _add_oscillator_panel(self, fig: go.Figure, row: int) -> None:
         """Add RSI and/or Stochastic traces plus threshold lines to the oscillator panel."""
@@ -360,6 +375,39 @@ class TechnicalChart:
         """Add a batch of pre-built traces onto a given panel row."""
         for trace in traces:
             fig.add_trace(trace, row=row, col=1)
+
+    def _add_breakout_markers(
+        self, fig: go.Figure, row: int, events: list[BreakoutEvent]
+    ) -> None:
+        """Add star markers for breakout/breakdown events on the candlestick panel."""
+        if not events:
+            return
+
+        fig.add_trace(
+            go.Scatter(
+                x=[pd.Timestamp(e.date).to_pydatetime() for e in events],
+                y=[e.level for e in events],
+                name="Breakouts",
+                mode="markers",
+                marker=dict(
+                    symbol="star",
+                    size=12,
+                    color=[
+                        (
+                            self._theme.tomato
+                            if e.direction == "breakout"
+                            else self._theme.bearish
+                        )
+                        for e in events
+                    ],
+                    line=dict(width=1, color="white"),
+                ),
+                text=[f"{e.direction} {e.level_type}" for e in events],
+                hovertemplate="%{text}<br>%{x}<br>$%{y:.2f}<extra></extra>",
+            ),
+            row=row,
+            col=1,
+        )
 
     def _finalize_layout(self, fig: go.Figure, panel_count: int) -> None:
         """Apply shared figure-level styling (title, height, template)."""

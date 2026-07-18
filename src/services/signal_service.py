@@ -6,6 +6,8 @@ import pandas as pd
 
 # Import local packages.
 from src.models.signal import Signal, SignalType
+from src.services.support_resistance_service import SupportResistanceService
+from src.models.market_structure import SupportResistanceLevel
 
 
 class SignalService:
@@ -53,29 +55,12 @@ class SignalService:
         data: pd.DataFrame,
         window: int = 20,
         num_levels: int = 3,
-    ) -> tuple[list[float], list[float]]:
+    ) -> tuple[list[SupportResistanceLevel], list[SupportResistanceLevel]]:
         """
-        Detect support and resistance levels using rolling extrema.
-
-        Args:
-            data: OHLCV DataFrame.
-            window: Rolling window size used to identify extrema.
-            num_levels: Number of support and resistance levels to return.
-
-        Returns:
-            Tuple containing support levels and resistance levels.
+        Delegate to SupportResistanceService to return typed, clustered levels.
         """
-        rolling_high = data["High"].rolling(window=window, center=True).max()
-        rolling_low = data["Low"].rolling(window=window, center=True).min()
-        resistance_mask = data["High"] == rolling_high
-        support_mask = data["Low"] == rolling_low
-        resistance_levels = sorted(
-            data.loc[resistance_mask, "High"].nlargest(num_levels).tolist()
-        )
-        support_levels = sorted(
-            data.loc[support_mask, "Low"].nsmallest(num_levels).tolist()
-        )
-        return support_levels, resistance_levels
+        svc = SupportResistanceService()
+        return svc.serve_levels(data, window=window, num_levels=num_levels)
 
     def _detect_rsi_signals(
         self,

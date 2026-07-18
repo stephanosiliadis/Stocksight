@@ -1,6 +1,6 @@
 # Import third party packages.
 import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Import local packages.
 from src.models.backtest_result import BacktestResult
@@ -8,6 +8,11 @@ from src.models.financial_statements import FinancialStatements
 from src.models.fundamentals import Fundamentals
 from src.models.signal import Signal
 from src.models.statistics import Statistics
+from src.models.market_structure import (
+    SupportResistanceLevel,
+    TrendClassification,
+    BreakoutEvent,
+)
 
 
 class AnalysisResult(BaseModel):
@@ -36,3 +41,7 @@ class AnalysisResult(BaseModel):
     fundamentals: Fundamentals | None = None
     financial_statements: FinancialStatements | None = None
     backtest_result: BacktestResult | None = None
+    support_levels: list[SupportResistanceLevel] = Field(default_factory=list)
+    resistance_levels: list[SupportResistanceLevel] = Field(default_factory=list)
+    trend: TrendClassification | None = None
+    breakout_events: list[BreakoutEvent] = Field(default_factory=list)
