@@ -16,6 +16,10 @@ from src.services.indicator_service import IndicatorService
 from src.services.signal_service import SignalService
 from src.services.support_resistance_service import SupportResistanceService
 from src.services.trend_service import TrendService
+from src.services.market_regime_service import MarketRegimeService
+from src.services.relative_strength_service import RelativeStrengthService
+from src.services.volume_profile_service import VolumeProfileService
+from src.services.signal_scoring_service import SignalScoringService
 from src.services.statistics_service import StatisticsService
 from src.utils.cache import AnalysisCache
 from src.utils.validators import (
@@ -54,6 +58,10 @@ class AnalysisService:
         self.signal_service = SignalService()
         self.support_service = SupportResistanceService()
         self.trend_service = TrendService()
+        self.regime_service = MarketRegimeService()
+        self.relative_service = RelativeStrengthService()
+        self.volume_profile_service = VolumeProfileService()
+        self.signal_scoring_service = SignalScoringService()
         self.statistics_service = StatisticsService()
         self.fundamentals_service = FundamentalsService()
         self.financials_service = FinancialsService()
@@ -85,6 +93,13 @@ class AnalysisService:
             indicators,
         )
 
+        # Fetch benchmark once for the batch (to be reused by RelativeStrength)
+        benchmark_data = self.data_service.serve_stock_data(
+            ticker=self.relative_service.benchmark_ticker,
+            start_date=warmup_start.isoformat(),
+            end_date=end_date.isoformat(),
+        )
+
         responses: list[AnalysisResult] = []
         for ticker in tickers:
             try:
@@ -95,6 +110,7 @@ class AnalysisService:
                     start_date=start_date,
                     end_date=end_date,
                     warmup_start=warmup_start,
+                    benchmark_data=benchmark_data,
                 )
             except Exception as exc:
                 # Per-ticker isolation: one bad ticker (bad data, network
@@ -116,6 +132,7 @@ class AnalysisService:
         start_date: date,
         end_date: date,
         warmup_start: date,
+        benchmark_data: pd.DataFrame | None = None,
     ) -> AnalysisResult | None:
         # Check cache for overlapping data
         cached_entry, fetch_start, fetch_end = self.cache.get_cache_status(
@@ -224,20 +241,38 @@ class AnalysisService:
         # Compute market structure: support/resistance, trend, breakouts
         try:
             support_levels, resistance_levels = self.support_service.serve_levels(
-                merged_raw
+                visible_data
             )
             breakout_events = self.support_service.detect_breakouts(
-                merged_raw, support_levels + resistance_levels
+                visible_data, support_levels + resistance_levels
             )
         except Exception:
             support_levels, resistance_levels, breakout_events = [], [], []
 
         try:
-            trend = self.trend_service.classify(merged_indicators)
+            trend = self.trend_service.classify(visible_indicators)
         except Exception:
             trend = None
 
-        return AnalysisResult(
+        try:
+            regime = self.regime_service.classify(visible_data)
+        except Exception:
+            regime = None
+
+        try:
+            relative_strength = self.relative_service.serve_relative_strength(
+                visible_data, benchmark_data
+            )
+        except Exception:
+            relative_strength = None
+
+        try:
+            volume_profile = self.volume_profile_service.serve_profile(visible_data)
+        except Exception:
+            volume_profile = None
+
+        # Build the AnalysisResult with computed market-structure fields
+        result = AnalysisResult(
             ticker=ticker,
             raw_data=visible_data,
             active_indicators=indicators,
@@ -251,7 +286,21 @@ class AnalysisService:
             resistance_levels=resistance_levels,
             trend=trend,
             breakout_events=breakout_events,
+            regime=regime,
+            relative_strength=relative_strength,
+            volume_profile=volume_profile,
         )
+
+        # Score signals now that result exists
+        try:
+            scored = [
+                self.signal_scoring_service.score(s, result) for s in result.signals
+            ]
+            result.scored_signals = scored
+        except Exception:
+            result.scored_signals = []
+
+        return result
 
     def _as_comparable_timestamp(
         self,

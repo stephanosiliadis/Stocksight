@@ -317,7 +317,50 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
         key=f"chart_{result.ticker}",
     )
 
-    st.subheader("📊 Statistics")
+    st.subheader("� Market Context")
+    regime_label = result.regime.regime.name.title() if result.regime else "N/A"
+    regime_conf = f"{result.regime.confidence:.0f}/100" if result.regime else "0/100"
+    relative_label = (
+        f"{result.relative_strength.relative_pct:.2f}% vs {result.relative_strength.benchmark_ticker}"
+        if result.relative_strength
+        else "N/A"
+    )
+    relative_delta = (
+        f"{result.relative_strength.ticker_return_pct:.2f}% / {result.relative_strength.benchmark_return_pct:.2f}%"
+        if result.relative_strength
+        else ""
+    )
+    poc_label = (
+        f"${result.volume_profile.point_of_control:.2f}"
+        if result.volume_profile
+        else "N/A"
+    )
+    vah_val = (
+        f"${result.volume_profile.value_area_low:.2f} - ${result.volume_profile.value_area_high:.2f}"
+        if result.volume_profile
+        else "N/A"
+    )
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Regime", regime_label, regime_conf)
+    col2.metric("Relative Strength", relative_label, relative_delta)
+    col3.metric("Point of Control", poc_label, vah_val)
+
+    if result.scored_signals:
+        with st.expander("Scored Signals", expanded=True):
+            scored_table = [
+                {
+                    "Date": pd.Timestamp(signal.signal.date).date().isoformat(),
+                    "Type": signal.signal.signal_type.name.title(),
+                    "Price": f"${signal.signal.price:.2f}",
+                    "Confidence": f"{signal.confidence:.0f}%",
+                    "Factors": ", ".join(signal.contributing_factors) or "none",
+                }
+                for signal in result.scored_signals
+            ]
+            st.table(scored_table)
+
+    st.subheader("�📊 Statistics")
     metrics, deltas = _statistics_to_metrics(result.statistics)
     render_metrics_cards(metrics, deltas)
 

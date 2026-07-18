@@ -13,6 +13,10 @@ from src.models.market_structure import (
     TrendClassification,
     BreakoutEvent,
 )
+from src.models.market_regime import RegimeClassification
+from src.models.relative_strength import RelativeStrength
+from src.models.volume_profile import VolumeProfile
+from src.models.scored_signal import ScoredSignal
 
 
 class AnalysisResult(BaseModel):
@@ -45,3 +49,7 @@ class AnalysisResult(BaseModel):
     resistance_levels: list[SupportResistanceLevel] = Field(default_factory=list)
     trend: TrendClassification | None = None
     breakout_events: list[BreakoutEvent] = Field(default_factory=list)
+    regime: RegimeClassification | None = None
+    relative_strength: RelativeStrength | None = None
+    volume_profile: VolumeProfile | None = None
+    scored_signals: list[ScoredSignal] = Field(default_factory=list)
