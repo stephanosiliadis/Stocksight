@@ -23,7 +23,7 @@ from src.models.analysis_request import AnalysisRequest
 from src.models.analysis_result import AnalysisResult
 from src.models.financial_statements import FinancialStatements
 from src.models.statistics import Statistics
-from src.services.analysis_service import AnalysisService
+from src.services.analysis_service import AnalysisService, DEFAULT_INDICATORS
 from src.utils.validators import ValidationError
 from src.visualization.comparison_chart import ComparisonChart
 from src.visualization.technical_chart import TechnicalChart
@@ -178,7 +178,7 @@ def _render_sidebar_controls() -> (
         _save_cached_tickers(tickers)
 
         st.divider()
-        indicators = render_indicator_selector()
+        indicators = render_indicator_selector(defaults=DEFAULT_INDICATORS)
 
         st.divider()
         period_info = render_date_selector()

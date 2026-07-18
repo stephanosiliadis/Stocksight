@@ -38,7 +38,7 @@ class BacktestService:
             BacktestResult containing performance metrics, executed trades,
             and equity curve, or None if the input data is invalid.
         """
-        if not self._validate_input(data, signals):
+        if not self._validate_input(data):
             return None
 
         engine = BacktestEngine(
@@ -76,7 +76,6 @@ class BacktestService:
     @staticmethod
     def _validate_input(
         data: pd.DataFrame,
-        signals: list[Signal],
     ) -> bool:
         """
         Validate required backtest inputs.
@@ -84,7 +83,7 @@ class BacktestService:
         Returns:
             True if both datasets are valid, otherwise False.
         """
-        return data is not None and not data.empty and bool(signals)
+        return data is not None and not data.empty
 
     @staticmethod
     def _calculate_total_return(
