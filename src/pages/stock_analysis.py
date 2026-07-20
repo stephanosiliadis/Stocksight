@@ -350,9 +350,16 @@ def _render_market_snapshot(result: AnalysisResult) -> None:
             vp = result.volume_profile
             if vp is not None:
                 st.metric("Point of Control", f"${vp.point_of_control:.2f}")
+                # NOTE: dollar signs must be escaped ("\$") here. Streamlit's
+                # caption/markdown renderer treats a pair of unescaped "$"
+                # as inline LaTeX math -- with two real dollar amounts in
+                # one string, everything between them ("146.23 - ") was
+                # being swallowed into a KaTeX span, which rendered in a
+                # different color/size than the surrounding text and threw
+                # off the line wrapping (the "green line, white line" look).
                 st.caption(
-                    f"Value area ${vp.value_area_low:.2f} "
-                    f"- ${vp.value_area_high:.2f}"
+                    f"Value area \\${vp.value_area_low:.2f}"
+                    f"–\\${vp.value_area_high:.2f}"
                 )
             else:
                 st.metric("Point of Control", "N/A")
@@ -581,9 +588,9 @@ def _render_export_buttons(results: list[AnalysisResult]) -> None:
 
 # Streamlit's st.metric truncates its value text with an ellipsis when it
 # doesn't fit the column width -- this is what was clipping the "Trend"
-# card (and would eventually clip others too, e.g. "Sideways"). Shrinking
-# the value font slightly and allowing it to wrap instead of truncating
-# fixes this without needing to touch every call site individually.
+# card (and would eventually clip others too, e.g. "Sideways"). Allowing
+# the value to wrap instead of truncating, at a larger, more legible
+# size, fixes this without needing to touch every call site individually.
 _METRIC_CSS = """
 <style>
 div[data-testid="stMetricValue"] {
@@ -591,6 +598,9 @@ div[data-testid="stMetricValue"] {
     white-space: normal;
     overflow-wrap: break-word;
     line-height: 1.25;
+}
+div[data-testid="stMetricLabel"] {
+    font-size: 1rem;
 }
 </style>
 """
