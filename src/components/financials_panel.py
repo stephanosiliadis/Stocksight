@@ -5,7 +5,7 @@ import pandas as pd
 def render_financials_panel(
     financials: dict | None,
 ):
-    st.subheader("Financial Statements")
+    st.subheader("📑 Financial Statements")
     if not financials:
         st.info("Financial data unavailable")
         return

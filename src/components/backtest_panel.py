@@ -4,7 +4,7 @@ import streamlit as st
 def render_backtest_panel(
     results: dict | None,
 ):
-    st.subheader("Backtest Results")
+    st.subheader("📈 Backtest Results")
     if not results:
         st.info("No backtest available")
         return

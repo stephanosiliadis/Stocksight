@@ -293,21 +293,76 @@ def _run_analysis(
     return True
 
 
+def _render_market_snapshot(result: AnalysisResult) -> None:
+    """
+    Render one consolidated snapshot row: trend, regime, relative strength
+    versus the benchmark, and the volume point-of-control.
+
+    These four data points used to be split awkwardly across the page --
+    a standalone "Trend" metric floating above the chart with no header
+    of its own, and a separate "Market Context" section below the chart
+    for the other three. Grouping them into a single bordered-card row
+    keeps everything scannable in one glance instead of two.
+    """
+    st.subheader("📊 Market Snapshot")
+    cols = st.columns([1.15, 1.0, 1.15, 1.15])
+
+    with cols[0]:
+        with st.container(border=True):
+            if result.trend is not None:
+                st.metric(
+                    "Trend",
+                    result.trend.trend.name.title(),
+                    f"{result.trend.strength:.0f}/100",
+                )
+            else:
+                st.metric("Trend", "N/A")
+
+    with cols[1]:
+        with st.container(border=True):
+            if result.regime is not None:
+                st.metric(
+                    "Regime",
+                    result.regime.regime.name.title(),
+                    f"{result.regime.confidence:.0f}/100",
+                )
+            else:
+                st.metric("Regime", "N/A")
+
+    with cols[2]:
+        with st.container(border=True):
+            rel = result.relative_strength
+            if rel is not None:
+                st.metric(f"vs {rel.benchmark_ticker}", f"{rel.relative_pct:+.2f}%")
+                # The full "ticker return vs benchmark return" breakdown
+                # goes in a caption rather than the metric's delta text --
+                # st.metric truncates long delta strings, which is why
+                # "vs SPY" used to get cut off in the narrow column.
+                st.caption(
+                    f"{result.ticker} {rel.ticker_return_pct:+.2f}%  •  "
+                    f"{rel.benchmark_ticker} {rel.benchmark_return_pct:+.2f}%"
+                )
+            else:
+                st.metric("vs Benchmark", "N/A")
+
+    with cols[3]:
+        with st.container(border=True):
+            vp = result.volume_profile
+            if vp is not None:
+                st.metric("Point of Control", f"${vp.point_of_control:.2f}")
+                st.caption(
+                    f"Value area ${vp.value_area_low:.2f} "
+                    f"- ${vp.value_area_high:.2f}"
+                )
+            else:
+                st.metric("Point of Control", "N/A")
+
+
 def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     """
-    Render the chart, statistics, financial statements, and backtest results
-    for one ticker.
+    Render the chart, market snapshot, statistics, financial statements,
+    backtest results, and trade plan for one ticker.
     """
-    # Trend badge
-    if result.trend is not None:
-        trend_label = result.trend.trend.name.title()
-        trend_strength = f"{result.trend.strength:.0f}/100"
-    else:
-        trend_label = "N/A"
-        trend_strength = "0/100"
-
-    st.metric("Trend", trend_label, trend_strength)
-
     chart = TechnicalChart(
         result,
         show_signals=show_signals,
@@ -321,37 +376,11 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
         key=f"chart_{result.ticker}",
     )
 
-    st.subheader("� Market Context")
-    regime_label = result.regime.regime.name.title() if result.regime else "N/A"
-    regime_conf = f"{result.regime.confidence:.0f}/100" if result.regime else "0/100"
-    relative_label = (
-        f"{result.relative_strength.relative_pct:.2f}% vs {result.relative_strength.benchmark_ticker}"
-        if result.relative_strength
-        else "N/A"
-    )
-    relative_delta = (
-        f"{result.relative_strength.ticker_return_pct:.2f}% / {result.relative_strength.benchmark_return_pct:.2f}%"
-        if result.relative_strength
-        else ""
-    )
-    poc_label = (
-        f"${result.volume_profile.point_of_control:.2f}"
-        if result.volume_profile
-        else "N/A"
-    )
-    vah_val = (
-        f"${result.volume_profile.value_area_low:.2f} - ${result.volume_profile.value_area_high:.2f}"
-        if result.volume_profile
-        else "N/A"
-    )
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Regime", regime_label, regime_conf)
-    col2.metric("Relative Strength", relative_label, relative_delta)
-    col3.metric("Point of Control", poc_label, vah_val)
+    st.divider()
+    _render_market_snapshot(result)
 
     if result.scored_signals:
-        with st.expander("Scored Signals", expanded=True):
+        with st.expander("🎯 Scored Signals", expanded=True):
             scored_table = [
                 {
                     "Date": pd.Timestamp(signal.signal.date).date().isoformat(),
@@ -364,16 +393,19 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
             ]
             st.table(scored_table)
 
-    st.subheader("�📊 Statistics")
+    st.divider()
+    st.subheader("💵 Price Statistics")
     metrics, deltas = _statistics_to_metrics(result.statistics)
     render_metrics_cards(metrics, deltas)
 
     statements = _statements_to_dataframes(result.financial_statements)
     if statements:
-        st.subheader("📑 Financial Statements")
+        st.divider()
+        # render_financials_panel() renders its own "Financial Statements"
+        # header, so nothing is added at this call site -- there used to
+        # be a second, near-identical subheader here that duplicated it.
         render_financials_panel(statements)
 
-    # Display backtest results if available
     if result.backtest_result:
         st.divider()
         backtest_data = {
@@ -547,12 +579,35 @@ def _render_export_buttons(results: list[AnalysisResult]) -> None:
         )
 
 
+# Streamlit's st.metric truncates its value text with an ellipsis when it
+# doesn't fit the column width -- this is what was clipping the "Trend"
+# card (and would eventually clip others too, e.g. "Sideways"). Shrinking
+# the value font slightly and allowing it to wrap instead of truncating
+# fixes this without needing to touch every call site individually.
+_METRIC_CSS = """
+<style>
+div[data-testid="stMetricValue"] {
+    font-size: 1.4rem;
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.25;
+}
+</style>
+"""
+
+
+def _inject_metric_css() -> None:
+    """Shrink/wrap st.metric value text so it never gets cut off."""
+    st.markdown(_METRIC_CSS, unsafe_allow_html=True)
+
+
 def show() -> None:
     """
     Render the Stock Analysis page.
     """
     st.title("📈 Stock Analysis")
     st.caption("Technical charts, statistics, and financial statements for any ticker.")
+    _inject_metric_css()
 
     # Hydrate the working set from disk on first visit so the user does
     # not lose their tickers when navigating between pages.
