@@ -7,6 +7,7 @@ from pathlib import Path
 
 # Import third party packages.
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 # Import local packages.
@@ -16,6 +17,7 @@ from src.components.financials_panel import render_financials_panel
 from src.components.indicator_selector import render_indicator_selector
 from src.components.metrics_cards import render_metrics_cards
 from src.components.news_panel import render_news_panel
+from src.components.risk_panel import render_risk_inputs, render_trade_plan
 from src.components.ticker_input import render_ticker_input
 from src.exporters.excel_exporter import ExcelExporter
 from src.exporters.pdf_exporter import PDFExporter
@@ -24,6 +26,8 @@ from src.models.analysis_result import AnalysisResult
 from src.models.financial_statements import FinancialStatements
 from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService, DEFAULT_INDICATORS
+from src.services.correlation_service import CorrelationService
+from src.services.trade_plan_service import TradePlanService
 from src.utils.validators import ValidationError
 from src.visualization.comparison_chart import ComparisonChart
 from src.visualization.technical_chart import TechnicalChart
@@ -380,11 +384,21 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
         }
         render_backtest_panel(backtest_data)
 
+    st.divider()
+    with st.expander("🧮 Trade Plan", expanded=False):
+        account_size, risk_pct = render_risk_inputs(key_prefix=result.ticker)
+        plan = TradePlanService().build_plan(
+            result=result,
+            account_size=account_size,
+            risk_pct=risk_pct,
+        )
+        render_trade_plan(plan)
+
 
 def _render_comparison_tab(results: list[AnalysisResult]) -> None:
     """
     Render a comparison chart showing normalized price performance across
-    multiple tickers.
+    multiple tickers, plus a return-correlation heatmap.
     """
     comparison_data = {}
     for result in results:
@@ -403,6 +417,34 @@ def _render_comparison_tab(results: list[AnalysisResult]) -> None:
         use_container_width=True,
         key="comparison_chart",
     )
+
+    st.subheader("🔗 Return Correlation")
+    price_data = {result.ticker: result.raw_data for result in results}
+    correlation_matrix = CorrelationService().serve_correlation_matrix(price_data)
+
+    if correlation_matrix.empty:
+        st.info("Need at least two tickers with overlapping data for correlation.")
+        return
+
+    heatmap = go.Figure(
+        data=go.Heatmap(
+            z=correlation_matrix.values,
+            x=correlation_matrix.columns.tolist(),
+            y=correlation_matrix.index.tolist(),
+            zmin=-1,
+            zmax=1,
+            colorscale="RdBu",
+            reversescale=True,
+            text=correlation_matrix.round(2).values,
+            texttemplate="%{text}",
+        )
+    )
+    heatmap.update_layout(
+        title="Daily Return Correlation",
+        height=400,
+        margin=dict(t=50, b=30, l=30, r=30),
+    )
+    st.plotly_chart(heatmap, use_container_width=True, key="correlation_heatmap")
 
 
 def _render_results(results: list[AnalysisResult], show_signals: bool) -> None:

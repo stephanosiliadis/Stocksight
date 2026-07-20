@@ -249,7 +249,7 @@ _Week 4_
 
 #### Day 1 -- Formulas
 
-Implement backtest_metrics.py and the calculation methods. Sortino: like Sharpe but only penalizes downside volatility (std of negative daily returns only). Profit factor: gross profit / gross loss (absolute value) across all trades. Expectancy: (win_rate _ avg_winner) - (loss_rate _ avg_loser). Write these against a tiny hand-built list of 5-6 fake Trade objects with known P&L so you can verify each number by hand.
+Implement backtest*metrics.py and the calculation methods. Sortino: like Sharpe but only penalizes downside volatility (std of negative daily returns only). Profit factor: gross profit / gross loss (absolute value) across all trades. Expectancy: (win_rate * avg*winner) - (loss_rate * avg_loser). Write these against a tiny hand-built list of 5-6 fake Trade objects with known P&L so you can verify each number by hand.
 
 > **Definition of Done:** All formulas match hand-calculated values on the fake trade set, including the edge case of zero losing trades (profit factor should not divide by zero).
 
