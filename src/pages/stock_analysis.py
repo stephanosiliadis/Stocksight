@@ -23,13 +23,16 @@ from src.exporters.excel_exporter import ExcelExporter
 from src.exporters.pdf_exporter import PDFExporter
 from src.models.analysis_request import AnalysisRequest
 from src.models.analysis_result import AnalysisResult
+from src.models.backtest_result import BacktestResult
 from src.models.financial_statements import FinancialStatements
 from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService, DEFAULT_INDICATORS
+from src.services.backtest_metrics_service import BacktestMetricsService
 from src.services.correlation_service import CorrelationService
 from src.services.trade_plan_service import TradePlanService
 from src.utils.validators import ValidationError
 from src.visualization.comparison_chart import ComparisonChart
+from src.visualization.equity_curve_chart import EquityCurveChart
 from src.visualization.technical_chart import TechnicalChart
 
 # Persisted list of tickers the user has been working with, so a page
@@ -365,6 +368,50 @@ def _render_market_snapshot(result: AnalysisResult) -> None:
                 st.metric("Point of Control", "N/A")
 
 
+def _render_trade_attribution(
+    metrics_service: BacktestMetricsService,
+    backtest_result: BacktestResult,
+) -> None:
+    """
+    Render the single best and worst trade from the backtest, if any.
+
+    Currency amounts are kept inside st.metric (plain text), never in
+    st.caption/st.markdown, since Streamlit's markdown renderer treats a
+    pair of unescaped "$" as inline LaTeX math and can visibly mangle
+    currency text -- st.metric doesn't run its label/value through that
+    renderer, so it's the safe place for this.
+    """
+    attribution = metrics_service.serve_trade_attribution(backtest_result)
+    best_trade = attribution.get("best_trade")
+    worst_trade = attribution.get("worst_trade")
+
+    if best_trade is None and worst_trade is None:
+        return
+
+    st.caption("Trade Attribution")
+    cols = st.columns(2)
+
+    with cols[0]:
+        if best_trade is not None:
+            st.metric(
+                "Best Trade",
+                f"${best_trade.pnl:,.2f}",
+                f"{best_trade.entry_date.date()} \u2192 {best_trade.exit_date.date()}",
+            )
+        else:
+            st.metric("Best Trade", "N/A")
+
+    with cols[1]:
+        if worst_trade is not None:
+            st.metric(
+                "Worst Trade",
+                f"${worst_trade.pnl:,.2f}",
+                f"{worst_trade.entry_date.date()} \u2192 {worst_trade.exit_date.date()}",
+            )
+        else:
+            st.metric("Worst Trade", "N/A")
+
+
 def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     """
     Render the chart, market snapshot, statistics, financial statements,
@@ -421,7 +468,19 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
             "max_drawdown": f"{result.backtest_result.max_drawdown:.2f}%",
             "win_rate": f"{result.backtest_result.win_rate:.2f}%",
         }
-        render_backtest_panel(backtest_data)
+        metrics_service = BacktestMetricsService()
+        extended_metrics = metrics_service.calculate(result.backtest_result)
+        render_backtest_panel(backtest_data, extended=extended_metrics)
+
+        _render_trade_attribution(metrics_service, result.backtest_result)
+
+        equity_chart = EquityCurveChart(result.backtest_result.equity_curve).build()
+        if equity_chart is not None:
+            st.plotly_chart(
+                equity_chart,
+                use_container_width=True,
+                key=f"equity_{result.ticker}",
+            )
 
     st.divider()
     with st.expander("🧮 Trade Plan", expanded=False):
@@ -597,7 +656,7 @@ div[data-testid="stMetricValue"] {
     font-size: 1.4rem;
     white-space: normal;
     overflow-wrap: break-word;
-    line-height: 1.25;
+    line-height: 1.2;
 }
 div[data-testid="stMetricLabel"] {
     font-size: 1rem;
