@@ -17,6 +17,10 @@ from src.models.market_regime import RegimeClassification
 from src.models.relative_strength import RelativeStrength
 from src.models.volume_profile import VolumeProfile
 from src.models.scored_signal import ScoredSignal
+from src.models.earnings import EarningsEvent
+from src.models.analyst_rating import AnalystRating
+from src.models.insider_transaction import InsiderTransaction
+from src.models.sector_benchmark import SectorBenchmark
 
 
 class AnalysisResult(BaseModel):
@@ -53,3 +57,7 @@ class AnalysisResult(BaseModel):
     relative_strength: RelativeStrength | None = None
     volume_profile: VolumeProfile | None = None
     scored_signals: list[ScoredSignal] = Field(default_factory=list)
+    earnings: list[EarningsEvent] = Field(default_factory=list)
+    analyst_rating: AnalystRating | None = None
+    insider_transactions: list[InsiderTransaction] = Field(default_factory=list)
+    sector_benchmark: SectorBenchmark | None = None

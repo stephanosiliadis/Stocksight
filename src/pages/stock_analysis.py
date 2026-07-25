@@ -14,6 +14,7 @@ import streamlit as st
 from src.components.backtest_panel import render_backtest_panel
 from src.components.date_selector import render_date_selector
 from src.components.financials_panel import render_financials_panel
+from src.components.fundamentals_panel import render_fundamentals_panel
 from src.components.indicator_selector import render_indicator_selector
 from src.components.metrics_cards import render_metrics_cards
 from src.components.news_panel import render_news_panel
@@ -25,6 +26,7 @@ from src.models.analysis_request import AnalysisRequest
 from src.models.analysis_result import AnalysisResult
 from src.models.backtest_result import BacktestResult
 from src.models.financial_statements import FinancialStatements
+from src.models.fundamentals import Fundamentals
 from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService, DEFAULT_INDICATORS
 from src.services.backtest_metrics_service import BacktestMetricsService
@@ -131,6 +133,46 @@ def _statements_to_dataframes(
     return tables or None
 
 
+def _format_large_number(value: float | int | None) -> str:
+    """Format a large dollar figure with T/B/M suffixes, or 'N/A' if None."""
+    if value is None:
+        return "N/A"
+    if value >= 1e12:
+        return f"${value / 1e12:.2f}T"
+    if value >= 1e9:
+        return f"${value / 1e9:.2f}B"
+    if value >= 1e6:
+        return f"${value / 1e6:.2f}M"
+    return f"${value:,.0f}"
+
+
+def _fundamentals_to_metrics(fundamentals: Fundamentals) -> dict[str, str]:
+    """
+    Convert a Fundamentals model into the pre-formatted label -> value
+    dict render_fundamentals_panel expects for its metrics grid.
+    """
+    return {
+        "P/E Ratio": (
+            f"{fundamentals.pe_ratio:.2f}" if fundamentals.pe_ratio else "N/A"
+        ),
+        "Market Cap": _format_large_number(fundamentals.market_cap),
+        "52W High": (
+            f"${fundamentals.w52_high:.2f}" if fundamentals.w52_high else "N/A"
+        ),
+        "52W Low": f"${fundamentals.w52_low:.2f}" if fundamentals.w52_low else "N/A",
+        "Dividend Yield": (
+            f"{fundamentals.dividend_yield * 100:.2f}%"
+            if fundamentals.dividend_yield
+            else "N/A"
+        ),
+        "Beta": f"{fundamentals.beta:.2f}" if fundamentals.beta else "N/A",
+        "EPS": f"${fundamentals.eps:.2f}" if fundamentals.eps else "N/A",
+        "Revenue": _format_large_number(fundamentals.revenue),
+        "Sector": fundamentals.sector or "N/A",
+        "Industry": fundamentals.industry or "N/A",
+    }
+
+
 def _build_request(
     tickers: list[str],
     indicators: list[str],
@@ -139,10 +181,13 @@ def _build_request(
     end_date: date | None,
     enable_backtest: bool = False,
     initial_capital: float = 10000.0,
+    fundamentals_options: dict | None = None,
 ) -> AnalysisRequest:
     """
     Translate the UI selections into an AnalysisRequest.
     """
+    fundamentals_options = fundamentals_options or {}
+
     if frequency == "Custom":
         return AnalysisRequest(
             tickers=tickers,
@@ -153,6 +198,7 @@ def _build_request(
             include_statements=True,
             backtest=enable_backtest,
             initial_capital=initial_capital,
+            **fundamentals_options,
         )
 
     return AnalysisRequest(
@@ -164,11 +210,12 @@ def _build_request(
         include_statements=True,
         backtest=enable_backtest,
         initial_capital=initial_capital,
+        **fundamentals_options,
     )
 
 
 def _render_sidebar_controls() -> (
-    tuple[list[str], list[str], dict, bool, bool, bool, float]
+    tuple[list[str], list[str], dict, bool, bool, bool, float, dict]
 ):
     """
     Render every input control in the sidebar, so the main area is left
@@ -176,7 +223,10 @@ def _render_sidebar_controls() -> (
 
     Returns:
         Tuple of (tickers, indicators, period_info, show_signals,
-        run_analysis, enable_backtest, initial_capital).
+        run_analysis, enable_backtest, initial_capital,
+        fundamentals_options). fundamentals_options bundles the four
+        Phase 5 "include_*" toggles as a dict, all default False, so
+        leaving them all off changes nothing about existing behavior.
     """
     with st.sidebar:
         st.header("Controls")
@@ -216,6 +266,31 @@ def _render_sidebar_controls() -> (
             initial_capital = 10000.0
 
         st.divider()
+        st.subheader("Fundamentals & Research")
+        fundamentals_options = {
+            "include_fundamentals": st.checkbox(
+                "Company fundamentals",
+                value=False,
+                help="P/E, market cap, 52-week range, sector, and more.",
+            ),
+            "include_earnings": st.checkbox(
+                "Earnings calendar",
+                value=False,
+                help="Upcoming earnings date(s) and consensus EPS estimate.",
+            ),
+            "include_analyst_ratings": st.checkbox(
+                "Analyst ratings",
+                value=False,
+                help="Consensus rating and price targets.",
+            ),
+            "include_insider_activity": st.checkbox(
+                "Insider activity",
+                value=False,
+                help="Recent insider buy/sell transactions.",
+            ),
+        }
+
+        st.divider()
         run_analysis = st.button(
             "Analyze",
             type="primary",
@@ -230,6 +305,7 @@ def _render_sidebar_controls() -> (
         run_analysis,
         enable_backtest,
         initial_capital,
+        fundamentals_options,
     )
 
 
@@ -263,6 +339,7 @@ def _run_analysis(
     end_date: date | None,
     enable_backtest: bool = False,
     initial_capital: float = 10000.0,
+    fundamentals_options: dict | None = None,
 ) -> bool:
     """
     Build a request, run the analysis, and stash results in session state.
@@ -281,6 +358,7 @@ def _run_analysis(
                 end_date=end_date,
                 enable_backtest=enable_backtest,
                 initial_capital=initial_capital,
+                fundamentals_options=fundamentals_options,
             )
             service = AnalysisService()
             results = service.analyze(request)
@@ -451,6 +529,32 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     st.subheader("💵 Price Statistics")
     metrics, deltas = _statistics_to_metrics(result.statistics)
     render_metrics_cards(metrics, deltas)
+
+    has_fundamentals_data = any(
+        [
+            result.fundamentals is not None,
+            bool(result.earnings),
+            result.analyst_rating is not None,
+            bool(result.insider_transactions),
+            result.sector_benchmark is not None,
+        ]
+    )
+    if has_fundamentals_data:
+        st.divider()
+        # render_fundamentals_panel() renders its own header, so nothing
+        # is added at this call site (same reasoning as the financial
+        # statements section just below).
+        render_fundamentals_panel(
+            fundamentals=(
+                _fundamentals_to_metrics(result.fundamentals)
+                if result.fundamentals is not None
+                else None
+            ),
+            earnings=result.earnings,
+            analyst_rating=result.analyst_rating,
+            insider_transactions=result.insider_transactions,
+            sector_benchmark=result.sector_benchmark,
+        )
 
     statements = _statements_to_dataframes(result.financial_statements)
     if statements:
@@ -691,6 +795,7 @@ def show() -> None:
         run_analysis,
         enable_backtest,
         initial_capital,
+        fundamentals_options,
     ) = _render_sidebar_controls()
 
     if not tickers:
@@ -718,6 +823,7 @@ def show() -> None:
             end_date,
             enable_backtest,
             initial_capital,
+            fundamentals_options,
         ):
             return
 

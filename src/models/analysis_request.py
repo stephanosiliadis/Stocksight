@@ -17,6 +17,9 @@ class AnalysisRequest(BaseModel):
         indicators: List of technical indicators to calculate and display.
         include_fundamentals: Whether to include fundamental company metrics.
         include_statements: Whether to include financial statements data.
+        include_earnings: Whether to include the upcoming earnings calendar.
+        include_analyst_ratings: Whether to include aggregated analyst sentiment.
+        include_insider_activity: Whether to include insider buy/sell activity.
         compare: Whether to perform comparative analysis between multiple tickers.
         backtest: Whether to run a backtesting simulation.
         initial_capital: Initial capital used for backtesting.
@@ -31,6 +34,9 @@ class AnalysisRequest(BaseModel):
     indicators: list[str]
     include_fundamentals: bool = False
     include_statements: bool = False
+    include_earnings: bool = False
+    include_analyst_ratings: bool = False
+    include_insider_activity: bool = False
     compare: bool = False
     backtest: bool = False
     initial_capital: float = 10_000.0
