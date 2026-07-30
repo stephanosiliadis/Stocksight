@@ -512,7 +512,7 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     _render_market_snapshot(result)
 
     if result.scored_signals:
-        with st.expander("🎯 Scored Signals", expanded=True):
+        with st.expander("🎯 Scored Signals", expanded=False):
             scored_table = [
                 {
                     "Date": pd.Timestamp(signal.signal.date).date().isoformat(),
