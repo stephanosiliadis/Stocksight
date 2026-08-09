@@ -3,13 +3,24 @@ import streamlit as st
 from src.models.risk_profile import TradePlan
 
 
-def render_risk_inputs(key_prefix: str) -> tuple[float, float]:
+def render_risk_inputs(
+    key_prefix: str,
+    default_account_size: float = 10_000.0,
+    default_risk_pct_pct: float = 1.0,
+) -> tuple[float, float]:
     """
     Render the account size / risk % input form.
 
     Args:
         key_prefix: Unique prefix for widget keys, so multiple tickers'
             forms on the same page don't collide (e.g. the ticker symbol).
+        default_account_size: Pre-filled account size ($). Callers can
+            source this from Settings; defaults to the value this form
+            always used before Settings existed.
+        default_risk_pct_pct: Pre-filled risk per trade, as a WHOLE
+            PERCENT (1.0 == 1%), matching the widget's own units -- not
+            the fraction convention used elsewhere. Defaults to the value
+            this form always used before Settings existed.
 
     Returns:
         Tuple of (account_size, risk_pct). risk_pct is a FRACTION
@@ -22,7 +33,7 @@ def render_risk_inputs(key_prefix: str) -> tuple[float, float]:
         account_size = st.number_input(
             "Account size ($)",
             min_value=100.0,
-            value=10_000.0,
+            value=default_account_size,
             step=500.0,
             key=f"{key_prefix}_account_size",
         )
@@ -32,7 +43,7 @@ def render_risk_inputs(key_prefix: str) -> tuple[float, float]:
             "Risk per trade (%)",
             min_value=0.1,
             max_value=100.0,
-            value=1.0,
+            value=default_risk_pct_pct,
             step=0.1,
             key=f"{key_prefix}_risk_pct",
             help="Percentage of account size risked on this single trade.",

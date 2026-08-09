@@ -33,7 +33,18 @@ class DataFetcher:
             )
 
             if stock_data is None or stock_data.empty:
-                return stock_data
+                # yfinance doesn't always raise on a failed request (e.g. a
+                # blocked/unreachable host) -- it can return a DataFrame
+                # with 0 rows that STILL has MultiIndex columns. Returning
+                # that empty-but-malformed frame as-is broke this
+                # function's own documented contract ("...or None if the
+                # data could not be retrieved") and left DataCleaner to
+                # blow up downstream trying to coerce a MultiIndex column
+                # slice (a DataFrame) as if it were a Series. Normalize to
+                # None here so every caller's existing
+                # `if data is not None and not data.empty` check keeps
+                # working exactly as it already assumes.
+                return None
 
             # Flatten MultiIndex columns (present when fetching a single ticker)
             if isinstance(stock_data.columns, pd.MultiIndex):

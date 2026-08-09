@@ -117,7 +117,7 @@ def show() -> None:
 
     if not backtested_results:
         st.info(
-            "No backtest results yet. Go to the Stock Analysis page, enable "
+            'No backtest results yet. Go to the Stock Analysis page, enable '
             '"Run backtest" in the sidebar, and run an analysis.'
         )
         return

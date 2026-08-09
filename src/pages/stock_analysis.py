@@ -29,6 +29,7 @@ from src.models.statistics import Statistics
 from src.services.analysis_service import AnalysisService, DEFAULT_INDICATORS
 from src.services.correlation_service import CorrelationService
 from src.services.trade_plan_service import TradePlanService
+from src.utils.settings_storage import load_settings
 from src.utils.validators import ValidationError
 from src.visualization.comparison_chart import ComparisonChart
 from src.visualization.technical_chart import TechnicalChart
@@ -227,11 +228,15 @@ def _render_sidebar_controls() -> (
     with st.sidebar:
         st.header("Controls")
 
+        user_settings = load_settings()
+
         tickers = render_ticker_input()
         _save_cached_tickers(tickers)
 
         st.divider()
-        indicators = render_indicator_selector(defaults=DEFAULT_INDICATORS)
+        indicators = render_indicator_selector(
+            defaults=user_settings.default_indicators or DEFAULT_INDICATORS
+        )
 
         st.divider()
         period_info = render_date_selector()
@@ -518,11 +523,18 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
 
     if result.backtest_result:
         st.divider()
-        st.info("📊 Backtest results for this run are on the **Backtesting** page.")
+        st.info(
+            "📊 Backtest results for this run are on the **Backtesting** page."
+        )
 
     st.divider()
     with st.expander("🧮 Trade Plan", expanded=False):
-        account_size, risk_pct = render_risk_inputs(key_prefix=result.ticker)
+        user_settings = load_settings()
+        account_size, risk_pct = render_risk_inputs(
+            key_prefix=result.ticker,
+            default_account_size=user_settings.default_account_size,
+            default_risk_pct_pct=user_settings.default_risk_pct * 100.0,
+        )
         plan = TradePlanService().build_plan(
             result=result,
             account_size=account_size,
