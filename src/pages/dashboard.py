@@ -6,6 +6,7 @@ import streamlit as st
 from src.models.analysis_request import AnalysisRequest
 from src.models.analysis_result import AnalysisResult
 from src.services.analysis_service import AnalysisService
+from src.utils.alert_storage import load_latest_alerts
 from src.utils.watchlist_storage import load_watchlist
 
 # Kept deliberately short/minimal for speed -- this page is a scan, not a
@@ -100,6 +101,24 @@ def _build_scan_table(results: list[AnalysisResult]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _render_active_alerts() -> None:
+    """
+    Show whatever the standalone scanner (scripts/run_watchlist_scan.py)
+    most recently found. This page never runs the scan itself -- it just
+    reads what was persisted, since the scanner runs in a separate
+    process on its own schedule, independent of whether this page is
+    even open.
+    """
+    alerts = load_latest_alerts()
+    if not alerts:
+        return
+
+    st.subheader(f"🔔 Active Alerts ({len(alerts)})")
+    for alert in alerts:
+        st.warning(alert.message)
+    st.divider()
+
+
 def show() -> None:
     """
     Render the Dashboard page: a fast summary scan across the watchlist.
@@ -115,6 +134,8 @@ def show() -> None:
         "recent scored signal for each ticker. For a full deep-dive on one "
         "ticker, use the Stock Analysis page instead."
     )
+
+    _render_active_alerts()
 
     watchlist = load_watchlist()
 

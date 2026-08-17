@@ -469,7 +469,7 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
     _render_market_snapshot(result)
 
     if result.scored_signals:
-        with st.expander("🎯 Scored Signals", expanded=True):
+        with st.expander("🎯 Scored Signals", expanded=False):
             scored_table = [
                 {
                     "Date": pd.Timestamp(signal.signal.date).date().isoformat(),
@@ -523,9 +523,7 @@ def _render_ticker_result(result: AnalysisResult, show_signals: bool) -> None:
 
     if result.backtest_result:
         st.divider()
-        st.info(
-            "📊 Backtest results for this run are on the **Backtesting** page."
-        )
+        st.info("📊 Backtest results for this run are on the **Backtesting** page.")
 
     st.divider()
     with st.expander("🧮 Trade Plan", expanded=False):
@@ -703,7 +701,7 @@ def _render_export_buttons(results: list[AnalysisResult]) -> None:
 _METRIC_CSS = """
 <style>
 div[data-testid="stMetricValue"] {
-    font-size: 2.8rem;
+    font-size: 1.4rem;
     white-space: normal;
     overflow-wrap: break-word;
     line-height: 1.2;

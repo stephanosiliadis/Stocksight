@@ -84,7 +84,20 @@ class IndicatorService:
         Returns:
             DataFrame with RSI column added.
         """
-        data["RSI"] = rsi(data["Close"], length=14)
+        result = rsi(data["Close"], length=14)
+
+        # pandas_ta returns None (not a NaN-filled Series) when there are
+        # fewer rows than `length` -- e.g. a recently-IPO'd ticker with
+        # under 14 days of history. Assigning None directly would set the
+        # whole column to the scalar None (object dtype), which later
+        # breaks any numeric comparison against it with a raw Python
+        # TypeError instead of the NaN-safe behavior the rest of this app
+        # already relies on. Leaving the column unset is exactly what
+        # every downstream consumer already checks for via
+        # `"RSI" in data.columns` / `.dropna()`.
+        if result is not None:
+            data["RSI"] = result
+
         return data
 
     def _calculate_macd(self, data: DataFrame) -> DataFrame:
@@ -110,21 +123,34 @@ class IndicatorService:
         """
         Calculate the 20-period Exponential Moving Average.
         """
-        data["EMA20"] = ema(data["Close"], length=20)
+        result = ema(data["Close"], length=20)
+        # See _calculate_rsi's comment: pandas_ta returns None rather
+        # than an all-NaN Series when there isn't enough history.
+        if result is not None:
+            data["EMA20"] = result
         return data
 
     def _calculate_ema50(self, data: DataFrame) -> DataFrame:
         """
         Calculate the 50-period Exponential Moving Average.
         """
-        data["EMA50"] = ema(data["Close"], length=50)
+        result = ema(data["Close"], length=50)
+        if result is not None:
+            data["EMA50"] = result
         return data
 
     def _calculate_ema200(self, data: DataFrame) -> DataFrame:
         """
         Calculate the 200-period Exponential Moving Average.
+
+        Needs 200 rows of history to produce anything -- a ticker with
+        less (e.g. recently IPO'd) simply won't get an EMA200 column at
+        all, which TrendService and the technical chart already treat as
+        "not available" rather than crashing on.
         """
-        data["EMA200"] = ema(data["Close"], length=200)
+        result = ema(data["Close"], length=200)
+        if result is not None:
+            data["EMA200"] = result
         return data
 
     def _calculate_bollinger(self, data: DataFrame) -> DataFrame:
@@ -149,12 +175,15 @@ class IndicatorService:
         Returns:
             DataFrame with ATR column added.
         """
-        data["ATR"] = atr(
+        result = atr(
             data["High"],
             data["Low"],
             data["Close"],
             length=14,
         )
+
+        if result is not None:
+            data["ATR"] = result
 
         return data
 
